@@ -12,15 +12,17 @@ type Props = {
   size: string;
   layout: string;
   floor: string;
+  address?: string;
   backgroundSrc?: string;
 };
 
 const ANIM_DURATION = 20; // ~0.67s
 const STAGGER_DELAY = 25; // ~0.83s between each item
+const ITEMS_START = 40;   // items start after header holds ~1.3s
 
 const StatRow: React.FC<{ stat: StatItem; index: number }> = ({ stat, index }) => {
   const frame = useCurrentFrame();
-  const delay = index * STAGGER_DELAY;
+  const delay = ITEMS_START + index * STAGGER_DELAY;
   const fromLeft = index % 2 === 0;
 
   const progress = interpolate(frame, [delay, delay + ANIM_DURATION], [0, 1], {
@@ -59,7 +61,7 @@ const StatRow: React.FC<{ stat: StatItem; index: number }> = ({ stat, index }) =
   );
 };
 
-export const StatsScene: React.FC<Props> = ({ price, size, layout, floor, backgroundSrc }) => {
+export const StatsScene: React.FC<Props> = ({ price, size, layout, floor, address, backgroundSrc }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -72,6 +74,7 @@ export const StatsScene: React.FC<Props> = ({ price, size, layout, floor, backgr
     { label: "坪數", value: size },
     { label: "格局", value: layout },
     { label: "樓層", value: floor },
+    ...(address ? [{ label: "地址", value: address }] : []),
   ];
 
   return (
@@ -110,7 +113,7 @@ export const StatsScene: React.FC<Props> = ({ price, size, layout, floor, backgr
           style={{
             opacity: headerOpacity,
             color: "rgba(255,255,255,0.6)",
-            fontSize: 28,
+            fontSize: 40,
             letterSpacing: 8,
             marginBottom: 48,
             textAlign: "center",

@@ -1,4 +1,4 @@
-import { AbsoluteFill, interpolate, OffthreadVideo, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, interpolate, OffthreadVideo, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { loadFont } from "@remotion/google-fonts/NotoSansTC";
 import { loadFont as loadSerifFont } from "@remotion/google-fonts/NotoSerifTC";
 import { MapboxFlyIn, FLY_DURATION_FRAMES, POI_START_FRAME } from "./MapboxFlyIn";
@@ -49,7 +49,7 @@ export const OpeningScene: React.FC<Props> = ({
   const showPois = !!(pois && pois.length > 0);
   const showExterior = !!exteriorVideo && !showPois; // POIs take priority over exterior
 
-  // When exterior photo present: Mapbox 60%, crossfade 10%, exterior 30%
+  // When exterior video present: Mapbox 55%, crossfade 10%, exterior 35%
   // When no exterior: Mapbox full duration
   const crossfadeStart = showExterior ? Math.round(0.55 * durationInFrames) : durationInFrames;
   const crossfadeEnd = showExterior ? Math.round(0.65 * durationInFrames) : durationInFrames;
@@ -125,7 +125,7 @@ export const OpeningScene: React.FC<Props> = ({
       {showExterior && (
         <AbsoluteFill style={{ opacity: exteriorOpacity, overflow: "hidden" }}>
           <OffthreadVideo
-            src={exteriorVideo!}
+            src={exteriorVideo!.startsWith("http") ? exteriorVideo! : staticFile(exteriorVideo!)}
             style={{
               width: "100%",
               height: "100%",

@@ -34,29 +34,6 @@ export const StagingScene: React.FC<Props> = ({ src, label }) => {
           }}
         />
 
-        {/* 虛擬裝潢 badge — top left */}
-        <AbsoluteFill
-          style={{
-            justifyContent: "flex-start",
-            alignItems: "flex-start",
-            padding: "60px",
-            fontFamily,
-          }}
-        >
-          <div
-            style={{
-              background: "rgba(255,215,0,0.92)",
-              borderRadius: 10,
-              padding: "8px 24px",
-              color: "#000",
-              fontSize: 32,
-              fontWeight: 700,
-            }}
-          >
-            虛擬裝潢
-          </div>
-        </AbsoluteFill>
-
         {/* Room label — top left */}
         <AbsoluteFill
           style={{
@@ -79,6 +56,27 @@ export const StagingScene: React.FC<Props> = ({ src, label }) => {
             }}
           >
             {label}
+          </div>
+        </AbsoluteFill>
+
+        {/* AI Staging — bottom right */}
+        <AbsoluteFill
+          style={{
+            justifyContent: "flex-end",
+            alignItems: "flex-end",
+            padding: "0 48px 80px",
+            fontFamily,
+          }}
+        >
+          <div
+            style={{
+              color: "rgba(255,255,255,0.7)",
+              fontSize: 28,
+              fontWeight: 700,
+              letterSpacing: 2,
+            }}
+          >
+            AI Staging
           </div>
         </AbsoluteFill>
       </AbsoluteFill>

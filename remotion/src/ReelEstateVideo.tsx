@@ -10,8 +10,10 @@ import { StatsScene } from "./compositions/StatsScene";
 import { CTAScene } from "./compositions/CTAScene";
 import type { VideoInput, SceneInput, StatsSceneInput } from "./types";
 
-export const TRANSITION_FRAMES = 15; // 0.5s fade/wipe
-export const STAGING_FRAMES = 60;    // 2s
+export const FADE_FRAMES = 10;       // ~0.33s fade between scenes
+export const WIPE_FRAMES = 28;       // ~0.93s wipe to staging
+export const STAGING_FRAMES = 90;    // 3s
+export const HOLD_FRAMES = 35;       // ~1.17s freeze before staging wipe (accounts for transition overlap)
 
 /** 計算兩個相鄰 scene 之間是否需要轉場（不含 stagingImage 的特殊轉場） */
 function needsFadeBetween(curr: SceneInput, next: SceneInput): boolean {
@@ -38,24 +40,30 @@ export function calcTotalFrames(scenes: SceneInput[]): number {
 
     total += scene.durationInFrames;
 
+    // Add hold frames for clips with staging (freeze on last frame before wipe)
+    if (scene.type === "clip" && scene.stagingImage) {
+      total += HOLD_FRAMES;
+    }
+
     if (scene.type === "clip" && scene.stagingImage) {
       // clip → wipe → staging → fade → next
       total += STAGING_FRAMES;
-      transitionCount += 1; // wipe
-      if (next) transitionCount += 1; // fade after staging
+      total -= WIPE_FRAMES; // wipe overlap
+      if (next) total -= FADE_FRAMES; // fade overlap after staging
     } else if (next) {
       if (needsFadeBetween(scene, next)) {
-        transitionCount += 1;
+        total -= FADE_FRAMES;
       }
     }
   }
 
-  return total - transitionCount * TRANSITION_FRAMES;
+  return total;
 }
 
 const fadePresentation = fade();
 const wipePresentation = wipe({ direction: "from-left" });
-const fadeTiming = linearTiming({ durationInFrames: TRANSITION_FRAMES });
+const fadeTiming = linearTiming({ durationInFrames: FADE_FRAMES });
+const wipeTiming = linearTiming({ durationInFrames: WIPE_FRAMES });
 
 export const ReelEstateVideo: React.FC<VideoInput> = (props) => {
   const {
@@ -97,8 +105,9 @@ export const ReelEstateVideo: React.FC<VideoInput> = (props) => {
         const isFirstInGroup = !(
           prev?.type === "clip" && prev.label === scene.label
         );
+        const holdFrames = scene.stagingImage ? HOLD_FRAMES : 0;
         seriesItems.push(
-          <TransitionSeries.Sequence key={`s-${i}`} durationInFrames={scene.durationInFrames}>
+          <TransitionSeries.Sequence key={`s-${i}`} durationInFrames={scene.durationInFrames + holdFrames}>
             <ClipScene src={scene.src} label={scene.label} isFirstInGroup={isFirstInGroup} />
           </TransitionSeries.Sequence>
         );
@@ -119,7 +128,7 @@ export const ReelEstateVideo: React.FC<VideoInput> = (props) => {
         }
         seriesItems.push(
           <TransitionSeries.Sequence key={`s-${i}`} durationInFrames={scene.durationInFrames}>
-            <StatsScene price={price} size={size} layout={layout} floor={floor} backgroundSrc={statsBg} />
+            <StatsScene price={price} size={size} layout={layout} floor={floor} address={address} backgroundSrc={statsBg} />
           </TransitionSeries.Sequence>
         );
         break;
@@ -151,7 +160,7 @@ export const ReelEstateVideo: React.FC<VideoInput> = (props) => {
     if (scene.type === "clip" && scene.stagingImage) {
       // Wipe → Staging → Fade
       seriesItems.push(
-        <TransitionSeries.Transition key={`t-wipe-${i}`} presentation={wipePresentation} timing={fadeTiming} />
+        <TransitionSeries.Transition key={`t-wipe-${i}`} presentation={wipePresentation} timing={wipeTiming} />
       );
       seriesItems.push(
         <TransitionSeries.Sequence key={`z-${i}`} durationInFrames={STAGING_FRAMES}>
