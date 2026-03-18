@@ -1,0 +1,28 @@
+{
+  "title": "信義區精裝兩房",
+  "location": "台北市信義區",
+  "address": "台北市信義區永吉路 XX 號",
+  "size": "35坪",
+  "layout": "2房2廳1衛",
+  "floor": "12F / 15F",
+  "price": "2,980萬",
+  "contact": "0912-345-678",
+  "agentName": "王小明 | 信義房屋",
+  "scenes": [
+    { "type": "opening", "durationInFrames": 90 },
+    { "type": "clip", "src": "clips/客廳1.mp4",  "label": "客廳",  "durationInFrames": 152 },
+    { "type": "clip", "src": "clips/客廳2.mp4",  "label": "客廳",  "durationInFrames": 152 },
+    { "type": "clip", "src": "clips/客廳3.mp4",  "label": "客廳",  "durationInFrames": 152 },
+    { "type": "clip", "src": "clips/主臥.mp4",   "label": "主臥",  "durationInFrames": 152 },
+    { "type": "clip", "src": "clips/更衣間.mp4", "label": "更衣間", "durationInFrames": 92  },
+    { "type": "clip", "src": "clips/臥室.mp4",   "label": "臥室",  "durationInFrames": 152 },
+    { "type": "clip", "src": "clips/臥室2.mp4",  "label": "臥室",  "durationInFrames": 152 },
+    { "type": "clip", "src": "clips/廚房.mp4",   "label": "廚房",  "durationInFrames": 152 },
+    { "type": "clip", "src": "clips/陽台.mp4",   "label": "陽台",  "durationInFrames": 152 },
+    { "type": "stats", "durationInFrames": 210 },
+    { "type": "cta", "durationInFrames": 240 }
+  ],
+  "narration": "audio/narration.mp3",
+  "bgm": "audio/bgm.mp3",
+  "captions": []
+}

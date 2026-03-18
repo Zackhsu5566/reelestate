@@ -1,0 +1,36 @@
+{
+  "name": "reelestate-remotion",
+  "version": "1.0.0",
+  "description": "ReelEstate - AI 房仲短影音範本",
+  "scripts": {
+    "start": "remotion studio",
+    "render": "remotion render src/index.ts ReelEstateVideo",
+    "build": "remotion render src/index.ts ReelEstateVideo out/video.mp4",
+    "server": "tsx server/index.ts",
+    "server:dev": "tsx watch server/index.ts",
+    "server:build": "tsc -p tsconfig.server.json"
+  },
+  "dependencies": {
+    "@googlemaps/js-api-loader": "^2.0.2",
+    "@remotion/bundler": "^4.0.0",
+    "@remotion/captions": "^4.0.0",
+    "@remotion/cli": "^4.0.0",
+    "@remotion/google-fonts": "^4.0.0",
+    "@remotion/media": "^4.0.0",
+    "@remotion/renderer": "^4.0.0",
+    "@remotion/transitions": "^4.0.0",
+    "@types/google.maps": "^3.58.1",
+    "express": "^4.21.0",
+    "mapbox-gl": "^3.20.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

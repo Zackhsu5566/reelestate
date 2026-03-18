@@ -1,0 +1,520 @@
+{
+  "sections": [
+    {
+      "marker": "OPENING",
+      "startMs": 0,
+      "endMs": 2720,
+      "durationMs": 2720,
+      "durationInFrames": 82
+    },
+    {
+      "marker": "客廳",
+      "startMs": 2720,
+      "endMs": 7520,
+      "durationMs": 4800,
+      "durationInFrames": 144
+    },
+    {
+      "marker": "STATS",
+      "startMs": 7520,
+      "endMs": 20240,
+      "durationMs": 12720,
+      "durationInFrames": 382
+    },
+    {
+      "marker": "客廳2",
+      "startMs": 20240,
+      "endMs": 22960,
+      "durationMs": 2720,
+      "durationInFrames": 82
+    },
+    {
+      "marker": "主臥",
+      "startMs": 22960,
+      "endMs": 34560,
+      "durationMs": 11600,
+      "durationInFrames": 348
+    },
+    {
+      "marker": "CTA",
+      "startMs": 34560,
+      "endMs": 41040,
+      "durationMs": 6480,
+      "durationInFrames": 194
+    }
+  ],
+  "captions": [
+    {
+      "text": "您好",
+      "startMs": 0,
+      "endMs": 320
+    },
+    {
+      "text": "為",
+      "startMs": 320,
+      "endMs": 480
+    },
+    {
+      "text": "您",
+      "startMs": 480,
+      "endMs": 640
+    },
+    {
+      "text": "推薦",
+      "startMs": 640,
+      "endMs": 960
+    },
+    {
+      "text": "這間",
+      "startMs": 960,
+      "endMs": 1200
+    },
+    {
+      "text": "設計師",
+      "startMs": 1200,
+      "endMs": 1840
+    },
+    {
+      "text": "的",
+      "startMs": 1840,
+      "endMs": 1920
+    },
+    {
+      "text": "家",
+      "startMs": 1920,
+      "endMs": 2320
+    },
+    {
+      "text": "專約",
+      "startMs": 2720,
+      "endMs": 3200
+    },
+    {
+      "text": "獨家",
+      "startMs": 3200,
+      "endMs": 3760
+    },
+    {
+      "text": "全",
+      "startMs": 3760,
+      "endMs": 4000
+    },
+    {
+      "text": "原木",
+      "startMs": 4000,
+      "endMs": 4480
+    },
+    {
+      "text": "裝潢",
+      "startMs": 4480,
+      "endMs": 4960
+    },
+    {
+      "text": "超大",
+      "startMs": 4960,
+      "endMs": 5440
+    },
+    {
+      "text": "三加",
+      "startMs": 5440,
+      "endMs": 5840
+    },
+    {
+      "text": "一房",
+      "startMs": 5840,
+      "endMs": 6240
+    },
+    {
+      "text": "雙",
+      "startMs": 6240,
+      "endMs": 6560
+    },
+    {
+      "text": "衛浴",
+      "startMs": 6560,
+      "endMs": 6960
+    },
+    {
+      "text": "開窗",
+      "startMs": 6960,
+      "endMs": 7520
+    },
+    {
+      "text": "售價",
+      "startMs": 7520,
+      "endMs": 7920
+    },
+    {
+      "text": "兩千零",
+      "startMs": 7920,
+      "endMs": 8480
+    },
+    {
+      "text": "四十八",
+      "startMs": 8480,
+      "endMs": 9120
+    },
+    {
+      "text": "萬",
+      "startMs": 9120,
+      "endMs": 9280
+    },
+    {
+      "text": "最新",
+      "startMs": 9280,
+      "endMs": 9760
+    },
+    {
+      "text": "降價",
+      "startMs": 9760,
+      "endMs": 10160
+    },
+    {
+      "text": "五十",
+      "startMs": 10160,
+      "endMs": 10480
+    },
+    {
+      "text": "萬",
+      "startMs": 10480,
+      "endMs": 10640
+    },
+    {
+      "text": "電梯大樓",
+      "startMs": 10880,
+      "endMs": 11600
+    },
+    {
+      "text": "管理費",
+      "startMs": 11600,
+      "endMs": 12160
+    },
+    {
+      "text": "每月",
+      "startMs": 12160,
+      "endMs": 12400
+    },
+    {
+      "text": "三千五百",
+      "startMs": 12400,
+      "endMs": 12960
+    },
+    {
+      "text": "二十八",
+      "startMs": 12960,
+      "endMs": 13440
+    },
+    {
+      "text": "元",
+      "startMs": 13440,
+      "endMs": 13600
+    },
+    {
+      "text": "十點",
+      "startMs": 13920,
+      "endMs": 14160
+    },
+    {
+      "text": "一三坪",
+      "startMs": 14160,
+      "endMs": 14720
+    },
+    {
+      "text": "平面車位",
+      "startMs": 14720,
+      "endMs": 15360
+    },
+    {
+      "text": "含",
+      "startMs": 15360,
+      "endMs": 15520
+    },
+    {
+      "text": "在",
+      "startMs": 15600,
+      "endMs": 15760
+    },
+    {
+      "text": "售價",
+      "startMs": 15760,
+      "endMs": 16160
+    },
+    {
+      "text": "內",
+      "startMs": 16240,
+      "endMs": 16320
+    },
+    {
+      "text": "公設比",
+      "startMs": 16400,
+      "endMs": 16960
+    },
+    {
+      "text": "百分之三十五",
+      "startMs": 16960,
+      "endMs": 17760
+    },
+    {
+      "text": "有花園",
+      "startMs": 17760,
+      "endMs": 18400
+    },
+    {
+      "text": "健身房",
+      "startMs": 18400,
+      "endMs": 19040
+    },
+    {
+      "text": "兒童",
+      "startMs": 19040,
+      "endMs": 19280
+    },
+    {
+      "text": "遊戲室",
+      "startMs": 19280,
+      "endMs": 19920
+    },
+    {
+      "text": "雙面採光",
+      "startMs": 20240,
+      "endMs": 20960
+    },
+    {
+      "text": "通風",
+      "startMs": 20960,
+      "endMs": 21360
+    },
+    {
+      "text": "一層",
+      "startMs": 21360,
+      "endMs": 21600
+    },
+    {
+      "text": "四戶",
+      "startMs": 21680,
+      "endMs": 22080
+    },
+    {
+      "text": "雙電梯",
+      "startMs": 22080,
+      "endMs": 22720
+    },
+    {
+      "text": "生活機能",
+      "startMs": 22960,
+      "endMs": 23600
+    },
+    {
+      "text": "好",
+      "startMs": 23600,
+      "endMs": 23840
+    },
+    {
+      "text": "交通方便",
+      "startMs": 23840,
+      "endMs": 24560
+    },
+    {
+      "text": "國道",
+      "startMs": 24640,
+      "endMs": 24960
+    },
+    {
+      "text": "一號",
+      "startMs": 24960,
+      "endMs": 25280
+    },
+    {
+      "text": "十號",
+      "startMs": 25280,
+      "endMs": 25760
+    },
+    {
+      "text": "左營",
+      "startMs": 25760,
+      "endMs": 26160
+    },
+    {
+      "text": "高鐵站",
+      "startMs": 26160,
+      "endMs": 26640
+    },
+    {
+      "text": "都",
+      "startMs": 26640,
+      "endMs": 26880
+    },
+    {
+      "text": "在",
+      "startMs": 26880,
+      "endMs": 27040
+    },
+    {
+      "text": "附近",
+      "startMs": 27040,
+      "endMs": 27440
+    },
+    {
+      "text": "八卦",
+      "startMs": 27760,
+      "endMs": 28160
+    },
+    {
+      "text": "寮",
+      "startMs": 28160,
+      "endMs": 28320
+    },
+    {
+      "text": "地勢",
+      "startMs": 28320,
+      "endMs": 28640
+    },
+    {
+      "text": "最高",
+      "startMs": 28640,
+      "endMs": 29120
+    },
+    {
+      "text": "不會",
+      "startMs": 29120,
+      "endMs": 29360
+    },
+    {
+      "text": "淹水",
+      "startMs": 29440,
+      "endMs": 29840
+    },
+    {
+      "text": "高樓",
+      "startMs": 29920,
+      "endMs": 30320
+    },
+    {
+      "text": "層",
+      "startMs": 30320,
+      "endMs": 30400
+    },
+    {
+      "text": "可觀",
+      "startMs": 30560,
+      "endMs": 30880
+    },
+    {
+      "text": "賞義大煙火",
+      "startMs": 30880,
+      "endMs": 31840
+    },
+    {
+      "text": "房屋",
+      "startMs": 32160,
+      "endMs": 32480
+    },
+    {
+      "text": "狀況",
+      "startMs": 32480,
+      "endMs": 32720
+    },
+    {
+      "text": "極佳",
+      "startMs": 32720,
+      "endMs": 33120
+    },
+    {
+      "text": "無需",
+      "startMs": 33120,
+      "endMs": 33440
+    },
+    {
+      "text": "整理",
+      "startMs": 33440,
+      "endMs": 33760
+    },
+    {
+      "text": "即可",
+      "startMs": 33760,
+      "endMs": 34080
+    },
+    {
+      "text": "入住",
+      "startMs": 34080,
+      "endMs": 34560
+    },
+    {
+      "text": "買房",
+      "startMs": 34560,
+      "endMs": 34960
+    },
+    {
+      "text": "找雲層",
+      "startMs": 34960,
+      "endMs": 35440
+    },
+    {
+      "text": "讓",
+      "startMs": 35520,
+      "endMs": 35680
+    },
+    {
+      "text": "您",
+      "startMs": 35680,
+      "endMs": 35760
+    },
+    {
+      "text": "心想事成",
+      "startMs": 35760,
+      "endMs": 36480
+    },
+    {
+      "text": "電話",
+      "startMs": 36960,
+      "endMs": 37360
+    },
+    {
+      "text": "零",
+      "startMs": 37360,
+      "endMs": 37520
+    },
+    {
+      "text": "九零",
+      "startMs": 37520,
+      "endMs": 37840
+    },
+    {
+      "text": "六",
+      "startMs": 37840,
+      "endMs": 38080
+    },
+    {
+      "text": "六六",
+      "startMs": 38080,
+      "endMs": 38400
+    },
+    {
+      "text": "五",
+      "startMs": 38400,
+      "endMs": 38560
+    },
+    {
+      "text": "三零五",
+      "startMs": 38560,
+      "endMs": 39200
+    },
+    {
+      "text": "永慶不動產",
+      "startMs": 39200,
+      "endMs": 40000
+    },
+    {
+      "text": "至",
+      "startMs": 40080,
+      "endMs": 40240
+    },
+    {
+      "text": "真博愛店",
+      "startMs": 40240,
+      "endMs": 41040
+    }
+  ],
+  "totalDurationMs": 41040,
+  "totalDurationFrames": 1231
+}
