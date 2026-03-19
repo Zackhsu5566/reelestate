@@ -47,12 +47,11 @@ export const OpeningScene: React.FC<Props> = ({
   const hasCoords = lat !== undefined && lng !== undefined;
   const showMapbox = !!(mapboxToken && hasCoords);
   const showPois = !!(pois && pois.length > 0);
-  const showExterior = !!exteriorVideo && !showPois; // POIs take priority over exterior
+  const showExterior = !!exteriorVideo;
 
-  // When exterior video present: Mapbox 55%, crossfade 10%, exterior 35%
-  // When no exterior: Mapbox full duration
-  const crossfadeStart = showExterior ? Math.round(0.55 * durationInFrames) : durationInFrames;
-  const crossfadeEnd = showExterior ? Math.round(0.65 * durationInFrames) : durationInFrames;
+  // Exterior crossfade: map+POI 70% → crossfade 10% → exterior 20%
+  const crossfadeStart = showExterior ? Math.round(0.70 * durationInFrames) : durationInFrames;
+  const crossfadeEnd = showExterior ? Math.round(0.80 * durationInFrames) : durationInFrames;
 
   const mapboxOpacity = showExterior
     ? interpolate(frame, [crossfadeStart, crossfadeEnd], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
@@ -61,16 +60,19 @@ export const OpeningScene: React.FC<Props> = ({
     ? interpolate(frame, [crossfadeStart, crossfadeEnd], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
     : 0;
 
-  // Text fades out: when POIs → fade after fly-in; when exterior → fade with crossfade
-  const textOpacity = showPois
-    ? interpolate(frame, [FLY_DURATION_FRAMES, FLY_DURATION_FRAMES + 30], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
-    : showExterior
-      ? interpolate(frame, [crossfadeStart, crossfadeEnd], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
-      : 1;
+  // Text fades out after fly-in (when POIs or exterior follow)
+  const textFadeStart = showPois ? FLY_DURATION_FRAMES : crossfadeStart;
+  const textFadeEnd = showPois ? FLY_DURATION_FRAMES + 30 : crossfadeEnd;
+  const textOpacity = (showPois || showExterior)
+    ? interpolate(frame, [textFadeStart, textFadeEnd], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    : 1;
 
-  // "生活機能" header — fades in when POIs start
+  // "生活機能" header — fades in when POIs start, fades out at crossfade
   const poiHeaderOpacity = showPois
     ? interpolate(frame, [POI_START_FRAME, POI_START_FRAME + 10], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+      * (showExterior
+        ? interpolate(frame, [crossfadeStart, crossfadeEnd], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+        : 1)
     : 0;
 
   const locationOpacity = interpolate(frame, [0.3 * fps, 1 * fps], [0, 1], {
