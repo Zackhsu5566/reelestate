@@ -7,9 +7,9 @@
 ## 完整 Pipeline
 
 ```
-房仲丟照片 + 空間標記 + 物件文字 + 建築外觀照（Telegram）
+房仲丟照片 + 空間標記 + 物件文字 + 建築外觀照（LINE）
        ↓
-n8n：接收 webhook → 依標記分組照片 → 上傳 R2 → POST /jobs
+n8n：接收 LINE webhook → 驗證 signature → 照片下載/上傳 R2 → 轉發至 FastAPI
        ↓
 ┌─ FastAPI Orchestrator ─────────────────────────────┐
 │                                                     │
@@ -18,11 +18,11 @@ n8n：接收 webhook → 依標記分組照片 → 上傳 R2 → POST /jobs
 │     → Agent 整理資訊、VLM 分析、寫講稿、規劃裝潢       │
 │     → 回傳結構化 JSON                                 │
 │                                                     │
-│  📩 Gate 1：推講稿給房仲確認（Telegram）                │
+│  📩 Gate 1：推講稿給房仲確認（LINE）                │
 │                                                     │
 │  ② MiniMax T2A：TTS（整段講稿）→ narration.mp3           │
 │                                                     │
-│  📩 Gate 1.5：推音訊試聽（Telegram）                    │
+│  📩 Gate 1.5：推音訊試聽（LINE）                    │
 │     不通過 → 調整講稿或 TTS 參數 → 重跑 TTS            │
 │                                                     │
 │  ③ 平行呼叫 WaveSpeed API：                           │
@@ -35,7 +35,7 @@ n8n：接收 webhook → 依標記分組照片 → 上傳 R2 → POST /jobs
 │     → 組 input.json（固定 durationInFrames 常數）      │
 │     → VPS Remotion render → 預覽影片                   │
 │                                                     │
-│  📩 Gate 2：推預覽影片給房仲確認（Telegram）              │
+│  📩 Gate 2：推預覽影片給房仲確認（LINE）              │
 │                                                     │
 │  ⑤ 確認 OK → 送出最終 MP4                             │
 │                                                     │
@@ -284,7 +284,7 @@ remotion/
 
 ### 系統架構
 ```
-Telegram（房仲傳照片 + 空間標記 + 物件文字）
+LINE（房仲傳照片 + 空間標記 + 物件文字）
   ↓
 n8n（接收 webhook，依標記分組照片，上傳 R2，路由到 FastAPI）
   ↓
@@ -306,7 +306,7 @@ FastAPI Orchestrator（主控，管理 job state + 呼叫所有服務）
   │
   └─ VPS Remotion Render（POST /render → MP4）
   ↓
-Gate 審查（Telegram 推送 + 等回覆）→ 最終 MP4 → Telegram
+Gate 審查（LINE Push API + 等 postback）→ 最終 MP4 → LINE
 ```
 
 **架構決策**：
@@ -318,9 +318,9 @@ Gate 審查（Telegram 推送 + 等回覆）→ 最終 MP4 → Telegram
 ### 人工審查節點（三關）
 | Gate | 時機 | 內容 | 不通過處理 | 實作 |
 |------|------|------|-----------|------|
-| Gate 1 | TTS 前 | 講稿文字 | 修改講稿 | Telegram 推送 + 等 callback |
-| Gate 1.5 | TTS 後、素材生成前 | 語音試聽（語氣/斷句/發音） | 調整講稿或 TTS 參數，重跑 TTS（成本低） | Telegram 推送 + 等 callback |
-| Gate 2 | 最終 render 前 | 預覽影片 | 調整後重新 render | Telegram 推送 + 等 callback |
+| Gate 1 | TTS 前 | 講稿文字 | 修改講稿 | LINE Push API + 等 postback |
+| Gate 1.5 | TTS 後、素材生成前 | 語音試聽（語氣/斷句/發音） | 調整講稿或 TTS 參數，重跑 TTS（成本低） | LINE Push API + 等 postback |
+| Gate 2 | 最終 render 前 | 預覽影片 | 調整後重新 render | LINE Push API + 等 postback |
 
 ### 拍攝規格
 | 空間 | 張數 | 理由 |
