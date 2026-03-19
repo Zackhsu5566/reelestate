@@ -12,7 +12,8 @@ import uuid as _uuid
 import httpx
 
 from orchestrator.config import settings
-from orchestrator.models import AssetTask, JobState, JobStatus, SpaceInfo, SpaceInput, STAGING_TEMPLATES
+from orchestrator.models import AssetTask, JobState, JobStatus, SpaceInfo, SpaceInput
+from orchestrator.staging_prompts import get_staging_prompt
 from orchestrator.pipeline.state import store
 from orchestrator.services.agent import agent_service
 from orchestrator.services.r2 import r2_service
@@ -222,9 +223,7 @@ async def step_generate(state: JobState) -> None:
     agent = state.agent_result
     tasks = []
 
-    staging_prompt = None
-    if state.premium and state.staging_template:
-        staging_prompt = STAGING_TEMPLATES.get(state.staging_template)
+    has_staging_template = state.premium and state.staging_template is not None
 
     if state.exterior_photo:
         tasks.append(_task_exterior_video(state))
@@ -235,6 +234,11 @@ async def step_generate(state: JobState) -> None:
             continue
 
         photos = input_space.photos
+        # Resolve room-specific staging prompt per space
+        staging_prompt = (
+            get_staging_prompt(state.staging_template, space.name)
+            if has_staging_template else None
+        )
         has_staging = staging_prompt is not None
 
         for idx, photo_url in enumerate(photos):
@@ -246,6 +250,7 @@ async def step_generate(state: JobState) -> None:
             ))
 
         if has_staging:
+            logger.info(f"[{state.job_id}] Staging {space.name} with room-specific prompt")
             tasks.append(_task_staging(state, space.name, photos[-1], staging_prompt))
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -389,9 +394,7 @@ async def _build_render_input(state: JobState) -> dict:
             "durationInFrames": CLIP_FRAMES,
         })
 
-    staging_prompt = None
-    if state.premium and state.staging_template:
-        staging_prompt = STAGING_TEMPLATES.get(state.staging_template)
+    has_staging_template = state.premium and state.staging_template is not None
 
     # Clip scenes (per photo)
     for space in agent.spaces:
@@ -402,6 +405,7 @@ async def _build_render_input(state: JobState) -> dict:
         is_small = input_space.is_small_space
         duration = CLIP_SMALL_FRAMES if is_small else CLIP_FRAMES
         photos = input_space.photos
+        has_staging = has_staging_template and get_staging_prompt(state.staging_template, space.name) is not None
 
         for idx in range(len(photos)):
             clip_key = f"clip:{space.name}:{idx}"
@@ -418,7 +422,7 @@ async def _build_render_input(state: JobState) -> dict:
                 "durationInFrames": duration,
             }
 
-            if staging_prompt and is_last:
+            if has_staging and is_last:
                 staging_task = state.asset_tasks.get(f"staging:{space.name}")
                 if staging_task and staging_task.status == "completed":
                     scene["stagingImage"] = staging_task.output_url
