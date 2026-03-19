@@ -275,6 +275,8 @@ async def step_generate(state: JobState) -> None:
 async def step_render(state: JobState) -> None:
     logger.info(f"[{state.job_id}] step_render")
     render_input = await _build_render_input(state)
+    opening = next((s for s in render_input["scenes"] if s["type"] == "opening"), None)
+    logger.info(f"[{state.job_id}] opening scene: {opening}")
 
     if state.preview_render_job_id:
         # Crash recovery
