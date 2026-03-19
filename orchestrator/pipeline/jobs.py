@@ -285,14 +285,15 @@ async def step_render(state: JobState) -> None:
 
     if state.preview_render_job_id:
         # Crash recovery
-        url = await render_service.poll(state.preview_render_job_id)
+        result = await render_service.poll(state.preview_render_job_id)
     else:
         rid = await render_service.submit(state.job_id, render_input)
         state.preview_render_job_id = rid
         await store.save(state)
-        url = await render_service.poll(rid)
+        result = await render_service.poll(rid)
 
-    state.preview_url = url
+    state.preview_url = result["outputUrl"]
+    state.thumbnail_url = result.get("thumbnailUrl")
     state.status = JobStatus.gate_preview
     await store.save(state)
 

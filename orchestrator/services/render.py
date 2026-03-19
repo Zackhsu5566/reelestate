@@ -38,8 +38,8 @@ class RenderService:
         resp.raise_for_status()
         return resp.json()["jobId"]
 
-    async def poll(self, job_id: str) -> str:
-        """Poll until render complete, return output URL."""
+    async def poll(self, job_id: str) -> dict:
+        """Poll until render complete, return result dict with outputUrl and optional thumbnailUrl."""
         start = time.monotonic()
         while True:
             resp = await self.client.get(f"{settings.render_url}/render/{job_id}")
@@ -48,7 +48,10 @@ class RenderService:
             status = data.get("status")
 
             if status == "completed":
-                return data["outputUrl"]
+                return {
+                    "outputUrl": data["outputUrl"],
+                    "thumbnailUrl": data.get("thumbnailUrl"),
+                }
             if status == "failed":
                 raise RuntimeError(
                     f"Render {job_id} failed: {data.get('error')}"
@@ -59,8 +62,8 @@ class RenderService:
 
             await asyncio.sleep(settings.render_poll_interval)
 
-    async def render(self, job_id: str, render_input: dict) -> str:
-        """Submit + poll, return output URL."""
+    async def render(self, job_id: str, render_input: dict) -> dict:
+        """Submit + poll, return result dict."""
         rid = await self.submit(job_id, render_input)
         return await self.poll(rid)
 
