@@ -42,6 +42,8 @@ class LineBot:
             json={"to": to, "messages": messages},
             headers=self._headers(),
         )
+        if resp.status_code >= 400:
+            logger.error(f"LINE Push API error {resp.status_code}: {resp.text}")
         resp.raise_for_status()
 
     def _video_message(self, video_url: str, thumbnail_url: str) -> dict:
