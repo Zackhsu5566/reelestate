@@ -12,19 +12,12 @@ export interface Job {
   completedAt?: Date;
 }
 
-// Caption type matching @remotion/captions (redefined to avoid importing React dep)
-export interface CaptionItem {
-  text: string;
-  startMs: number;
-  endMs: number;
-  timestampMs: number | null;
-  confidence: number | null;
-}
-
 // Scene types matching src/types.ts but with URLs instead of local paths
 export interface OpeningScene {
   type: "opening";
   durationInFrames: number;
+  exteriorVideo?: string;
+  pois?: POI[];
 }
 
 export interface ClipScene {
@@ -35,25 +28,10 @@ export interface ClipScene {
   stagingImage?: string; // R2 URL or local path
 }
 
-export interface KenBurnsScene {
-  type: "ken_burns";
-  src: string;
-  label: string;
-  durationInFrames: number;
-  stagingImage?: string;
-}
-
 export interface POI {
   name: string;
   category: string;
   distance: string;
-}
-
-export interface OpeningSceneExt {
-  type: "opening";
-  durationInFrames: number;
-  exteriorPhoto?: string;
-  pois?: POI[];
 }
 
 export interface StatsScene {
@@ -68,7 +46,7 @@ export interface CTAScene {
   backgroundSrc?: string;
 }
 
-export type SceneInput = OpeningScene | OpeningSceneExt | ClipScene | KenBurnsScene | StatsScene | CTAScene;
+export type SceneInput = OpeningScene | ClipScene | StatsScene | CTAScene;
 
 export interface RenderInput {
   title: string;
@@ -81,9 +59,7 @@ export interface RenderInput {
   contact: string;
   agentName: string;
   scenes: SceneInput[];
-  narration: string; // URL
   bgm?: string; // URL
-  captions: CaptionItem[];
   // Map / OpeningScene fields (optional)
   community?: string;
   propertyType?: string;
@@ -128,13 +104,8 @@ export function validateRenderRequest(body: unknown): {
   const input = b.input as Record<string, unknown>;
 
   // Required fields
-  for (const field of ["title", "narration"]) {
-    if (!input[field] || typeof input[field] !== "string") {
-      return {
-        valid: false,
-        error: `input.${field} is required and must be a string`,
-      };
-    }
+  if (!input.title || typeof input.title !== "string") {
+    return { valid: false, error: "input.title is required and must be a string" };
   }
 
   // Optional string fields (allow empty string, null, or missing)
@@ -165,13 +136,13 @@ export function validateRenderRequest(body: unknown): {
     if (!scene.type) {
       return { valid: false, error: `scenes[${i}].type is required` };
     }
-    if (!["opening", "clip", "ken_burns", "stats", "cta"].includes(scene.type as string)) {
+    if (!["opening", "clip", "stats", "cta"].includes(scene.type as string)) {
       return { valid: false, error: `scenes[${i}].type "${scene.type}" is invalid` };
     }
     if (typeof scene.durationInFrames !== "number" || scene.durationInFrames <= 0) {
       return { valid: false, error: `scenes[${i}].durationInFrames must be a positive number` };
     }
-    if (scene.type === "clip" || scene.type === "ken_burns") {
+    if (scene.type === "clip") {
       if (!scene.src || typeof scene.src !== "string") {
         return { valid: false, error: `scenes[${i}].src is required for clip scenes` };
       }
@@ -179,10 +150,6 @@ export function validateRenderRequest(body: unknown): {
         return { valid: false, error: `scenes[${i}].label is required for clip scenes` };
       }
     }
-  }
-
-  if (!Array.isArray(input.captions)) {
-    return { valid: false, error: "input.captions must be an array" };
   }
 
   return { valid: true, data: body as RenderRequest };

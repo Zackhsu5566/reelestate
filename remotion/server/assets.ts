@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
-import type { RenderInput, SceneInput, ClipScene, KenBurnsScene, OpeningSceneExt } from "./types";
+import type { RenderInput, SceneInput, ClipScene, OpeningScene } from "./types";
 
 const PUBLIC_DIR = path.resolve(__dirname, "..", "..", "public");
 const PER_FILE_TIMEOUT = 30_000;
@@ -85,8 +85,8 @@ export async function downloadAssets(
 
   for (let i = 0; i < input.scenes.length; i++) {
     const scene = input.scenes[i];
-    if (scene.type === "clip" || scene.type === "ken_burns") {
-      const clip = scene as ClipScene | KenBurnsScene;
+    if (scene.type === "clip") {
+      const clip = scene as ClipScene;
       let localSrc = clip.src;
       if (isUrl(clip.src)) {
         const ext = extFromUrl(clip.src);
@@ -114,21 +114,21 @@ export async function downloadAssets(
       }
 
       mappedScenes.push({ ...clip, src: localSrc, stagingImage: localStaging });
-    } else if (scene.type === "opening" && "exteriorPhoto" in scene) {
-      const opening = scene as OpeningSceneExt;
-      let localExterior = opening.exteriorPhoto;
-      if (opening.exteriorPhoto && isUrl(opening.exteriorPhoto)) {
-        const ext = extFromUrl(opening.exteriorPhoto);
+    } else if (scene.type === "opening" && "exteriorVideo" in scene) {
+      const opening = scene as OpeningScene;
+      let localExterior = opening.exteriorVideo;
+      if (opening.exteriorVideo && isUrl(opening.exteriorVideo)) {
+        const ext = extFromUrl(opening.exteriorVideo);
         localExterior = `${jobDir}/images/exterior${ext}`;
         const absDest = path.join(PUBLIC_DIR, localExterior);
         downloads.push(
-          downloadWithRetry(opening.exteriorPhoto, absDest).then((size) => ({
+          downloadWithRetry(opening.exteriorVideo, absDest).then((size) => ({
             label: "exterior",
             size,
           })),
         );
       }
-      mappedScenes.push({ ...opening, exteriorPhoto: localExterior });
+      mappedScenes.push({ ...opening, exteriorVideo: localExterior });
     } else {
       // stats/cta scenes may have a backgroundSrc URL that needs downloading
       let mapped = scene;
@@ -146,18 +146,6 @@ export async function downloadAssets(
       }
       mappedScenes.push(mapped);
     }
-  }
-
-  // Narration
-  let localNarration = input.narration;
-  if (isUrl(input.narration)) {
-    const ext = extFromUrl(input.narration);
-    localNarration = `${jobDir}/audio/narration${ext}`;
-    downloads.push(
-      downloadWithRetry(input.narration, path.join(PUBLIC_DIR, localNarration)).then(
-        (size) => ({ label: "narration", size }),
-      ),
-    );
   }
 
   // BGM
@@ -183,7 +171,6 @@ export async function downloadAssets(
   return {
     ...input,
     scenes: mappedScenes,
-    narration: localNarration,
     bgm: localBgm,
   };
 }

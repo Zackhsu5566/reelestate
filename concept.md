@@ -169,14 +169,14 @@ TTS 音訊獨立播放，不影響場景時長。
 ## Opening 外觀展示（Premium only）
 
 ### 概念
-Premium 方案在 Opening 地圖動畫結束後，crossfade 進入建築外觀靜態照片，讓觀眾在進入室內空間前先看到建築外觀：
+Premium 方案在 Opening 地圖動畫結束後，crossfade 進入建築外觀影片，讓觀眾在進入室內空間前先看到建築外觀：
 
 ```
-OpeningScene（Mapbox 地圖動畫 → crossfade → 外觀照片）
+OpeningScene（Mapbox 地圖動畫 → crossfade → 外觀影片）
     → ClipScene × N（室內各空間影片）
 ```
 
-- 外觀照片（`exteriorPhoto`）由房仲上傳時標記 `exterior_photo`，直接透過 input.json 傳入
+- 外觀影片（`exteriorVideo`）由房仲上傳時標記 `exterior_photo`，直接透過 input.json 傳入
 - 地圖動畫與文字 overlay 在 crossfade 時淡出
 - 無額外標籤顯示
 
@@ -185,20 +185,20 @@ OpeningScene（Mapbox 地圖動畫 → crossfade → 外觀照片）
 | | Standard | Premium |
 |---|---|---|
 | **Opening 地圖** | Mapbox only | Mapbox（同） |
-| **外觀展示** | 無 | Mapbox 動畫結束後 crossfade 外觀靜態照 |
+| **外觀展示** | 無 | Mapbox 動畫結束後 crossfade 外觀影片 |
 | **Render 時間影響** | 無差異 | 無差異 |
-| **額外成本** | $0 | $0（外觀照片直接傳入，不需 AI 生成） |
+| **額外成本** | $0 | $0（外觀影片直接傳入，不需 AI 生成） |
 
 ### 技術實作
-- **exteriorPhoto**：房仲上傳時標記 `exterior_photo`，R2 URL 直接填入 OpeningScene
-- **非關鍵任務**：`exteriorPhoto` 缺失時跳過，Opening 直接接第一個室內空間
+- **exteriorVideo**：房仲上傳時標記 `exterior_photo`，R2 URL 直接填入 OpeningScene
+- **非關鍵任務**：`exteriorVideo` 缺失時跳過，Opening 直接接第一個室內空間
 
 ### 時序
 ```
 step_generate 平行執行：
 ├─ _task_clip_direct × N    (~95s each, semaphore 限 3 併發)
 └─ _task_staging × N        (~38s each, non-critical)
-（外觀照片已由 n8n 上傳至 R2，無需額外 AI 生成步驟）
+（外觀影片已由 n8n 上傳至 R2，無需額外 AI 生成步驟）
 ```
 
 ## Remotion 剪輯規劃
@@ -227,7 +227,7 @@ remotion/
 ├── ReelEstateVideo.tsx     ← 主 composition + 轉場邏輯
 ├── types.ts
 └── compositions/
-    ├── OpeningScene.tsx    ← 標題 + 地址 + 外觀照片（premium exteriorPhoto）
+    ├── OpeningScene.tsx    ← 標題 + 地址 + 外觀影片（premium exteriorVideo）
     ├── ClipScene.tsx       ← 影片片段 + 空間標籤（同空間延續，空 label 不顯示）
     ├── StagingScene.tsx    ← 虛擬裝潢靜態圖 + 「虛擬裝潢」badge
     ├── StatsScene.tsx      ← 物件資訊卡
@@ -247,7 +247,7 @@ remotion/
   "price": "2,980萬",
   "contact": "0912-345-678",
   "agentName": "王小明 | 信義房屋",
-  "exteriorPhoto": "https://r2.example.com/exterior.jpg",
+  "exteriorVideo": "https://r2.example.com/exterior.mp4",
   "scenes": [
     { "type": "opening", "durationInFrames": 300 },
     { "type": "clip", "src": "clips/客廳1.mp4", "label": "客廳", "durationInFrames": 150 },
@@ -266,7 +266,7 @@ remotion/
 }
 ```
 
-> `exteriorPhoto` 只有 premium 方案才會出現（R2 URL，由 n8n 在接收 webhook 時上傳並傳入）。
+> `exteriorVideo` 只有 premium 方案才會出現（R2 URL，由 n8n 在接收 webhook 時上傳並傳入）。
 > `mapboxToken` 由 orchestrator 從環境變數注入，不會出現在 log 中。
 
 ### 視覺風格
@@ -350,7 +350,7 @@ Gate 審查（Telegram 推送 + 等回覆）→ 最終 MP4 → Telegram
 ### Premium 方案（額外成本）
 | 項目 | 數量 | 單價 | 小計 |
 |------|------|------|------|
-| 外觀照片（外觀照直接傳入，無需 AI 生成） | — | $0 | **$0** |
+| 外觀影片（外觀照直接傳入，無需 AI 生成） | — | $0 | **$0** |
 | **Premium 額外合計** | | | **+$0** |
 | **Premium 總計** | | | **~$2.44**（約 NT$76，與 Standard 相同） |
 
@@ -395,7 +395,7 @@ Gate 審查（Telegram 推送 + 等回覆）→ 最終 MP4 → Telegram
 - ✅ ClipScene 同空間標籤延續 + 空 label 不顯示（2026-03-15）
 - ✅ ~~KenBurnsScene / Ken Burns 動畫~~ → 已移除（2026-03-19）
 - ✅ 重命名 zImage/ZImageScene → stagingImage/StagingScene（2026-03-15）
-- ✅ 移除空拍轉場（Google 3D/CesiumJS/Kling/renderStill）→ 改為外觀照片 crossfade（2026-03-16）
+- ✅ 移除空拍轉場（Google 3D/CesiumJS/Kling/renderStill）→ 改為外觀影片 crossfade（2026-03-16）
 - ✅ Pipeline 簡化設計規劃完成（2026-03-18）
 - ✅ Pipeline 簡化初始實作（Orchestrator + Remotion 重構）（2026-03-18）
 - ✅ 競爭市場分析完成（`competitive-analysis-2026-03.md`）（2026-03-18）
@@ -409,8 +409,8 @@ Gate 審查（Telegram 推送 + 等回覆）→ 最終 MP4 → Telegram
 
 ### 整合（當前階段）
 1. ~~FastAPI Orchestrator 實作~~ ✅（E2E 測試通過 2026-03-15）
-2. ~~空拍轉場 pipeline~~ ✅ 已移除，改為外觀照片 crossfade（2026-03-16）
+2. ~~空拍轉場 pipeline~~ ✅ 已移除，改為外觀影片 crossfade（2026-03-16）
 3. ~~Pipeline 簡化~~ ✅ 初始實作完成（2026-03-18）
 4. VPS 部署 orchestrator + render server 更新（新增 MAPBOX_TOKEN 環境變數）
-5. OpeningScene 實作 exteriorPhoto crossfade（premium）
+5. ~~OpeningScene 實作 exteriorVideo crossfade（premium）~~ ✅（2026-03-19）
 6. 真實資料 E2E 測試
