@@ -23,6 +23,7 @@ from orchestrator.pipeline.state import store
 from orchestrator.services.r2 import r2_service
 from orchestrator.services.render import render_service
 from orchestrator.services.wavespeed import wavespeed
+from orchestrator.config import settings
 from orchestrator.line.bot import line_bot
 from orchestrator.line.webhook import router as line_router
 from orchestrator.line.conversation import ConversationManager
