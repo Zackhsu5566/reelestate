@@ -274,7 +274,7 @@ async def step_generate(state: JobState) -> None:
 
 async def step_render(state: JobState) -> None:
     logger.info(f"[{state.job_id}] step_render")
-    render_input = _build_render_input(state)
+    render_input = await _build_render_input(state)
 
     if state.preview_render_job_id:
         # Crash recovery
@@ -329,10 +329,47 @@ STATS_FRAMES = 140
 CTA_FRAMES = 90
 
 
-def _build_render_input(state: JobState) -> dict:
+async def _geocode(address: str) -> tuple[float, float] | None:
+    """Geocode address via Mapbox, with Redis cache."""
+    if not settings.mapbox_token or not address:
+        return None
+
+    cache_key = address.strip()
+    cached = await store.get_geo_cache(cache_key)
+    if cached and "lat" in cached and "lng" in cached:
+        return cached["lat"], cached["lng"]
+
+    url = "https://api.mapbox.com/search/geocode/v6/forward"
+    params = {
+        "q": address,
+        "country": "TW",
+        "limit": 1,
+        "access_token": settings.mapbox_token,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+        features = data.get("features", [])
+        if not features:
+            return None
+        coords = features[0]["geometry"]["coordinates"]  # [lng, lat]
+        result = {"lat": coords[1], "lng": coords[0]}
+        await store.set_geo_cache(cache_key, result)
+        return result["lat"], result["lng"]
+    except Exception as e:
+        logger.warning(f"Geocoding failed for '{address}': {e}")
+        return None
+
+
+async def _build_render_input(state: JobState) -> dict:
     agent = state.agent_result
     prop = agent.property
     scenes: list[dict] = []
+
+    # Geocode address for Mapbox map
+    geo = await _geocode(prop.address or prop.location or "")
 
     # Opening scene
     opening_scene: dict = {"type": "opening", "durationInFrames": OPENING_FRAMES}
@@ -406,6 +443,9 @@ def _build_render_input(state: JobState) -> dict:
 
     if settings.mapbox_token:
         render_input["mapboxToken"] = settings.mapbox_token
+    if geo:
+        render_input["lat"] = geo[0]
+        render_input["lng"] = geo[1]
     if prop.community:
         render_input["community"] = prop.community
     if prop.property_type:
