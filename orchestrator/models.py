@@ -101,7 +101,6 @@ class JobState(BaseModel):
     premium: bool = False
     exterior_photo: str | None = None  # Building exterior photo URL (displayed in OpeningScene)
     line_user_id: str = ""
-    callback_url: str = ""
 
     # Agent output
     agent_result: AgentResult | None = None
@@ -115,6 +114,7 @@ class JobState(BaseModel):
     # Render
     preview_render_job_id: str | None = None
     preview_url: str | None = None
+    thumbnail_url: str | None = None
     final_url: str | None = None
 
     # Errors
@@ -137,7 +137,6 @@ class CreateJobRequest(BaseModel):
     exterior_photo: str | None = None  # Building exterior photo URL
     staging_template: str | None = None
     line_user_id: str = ""
-    callback_url: str = ""
 
 
 class GateCallbackRequest(BaseModel):

@@ -30,8 +30,9 @@ class Settings(BaseSettings):
     # Map API Keys (OpeningScene)
     mapbox_token: str = ""
 
-    # Telegram
-    telegram_bot_token: str = ""
+    # LINE
+    line_channel_access_token: str = ""
+    line_channel_secret: str = ""
 
     # General
     max_retries: int = 3
