@@ -23,7 +23,9 @@ from orchestrator.pipeline.state import store
 from orchestrator.services.r2 import r2_service
 from orchestrator.services.render import render_service
 from orchestrator.services.wavespeed import wavespeed
-from orchestrator.telegram.bot import telegram_bot
+from orchestrator.line.bot import line_bot
+from orchestrator.line.webhook import router as line_router
+from orchestrator.line.conversation import ConversationManager
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,10 @@ async def lifespan(app: FastAPI):
     await r2_service.start()
     await wavespeed.start()
     await render_service.start()
-    await telegram_bot.start()
+    line_bot._token = settings.line_channel_access_token
+    await line_bot.start()
+    import orchestrator.line.webhook as line_wh
+    line_wh.conv_manager = ConversationManager(store.r)
 
     # Resume interrupted jobs
     active_ids = await store.get_active_job_ids()
@@ -48,7 +53,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    await telegram_bot.close()
+    await line_bot.close()
     await render_service.close()
     await wavespeed.close()
     await r2_service.close()
@@ -56,6 +61,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="ReelEstate Orchestrator", lifespan=lifespan)
+app.include_router(line_router)
 
 
 # ── Preprocessing ──
@@ -97,7 +103,7 @@ async def create_job(req: CreateJobRequest):
         exterior_photo=req.exterior_photo,
         staging_template=req.staging_template,
         line_user_id=req.line_user_id,
-        callback_url=req.callback_url,
+
     )
     await store.create(state)
 

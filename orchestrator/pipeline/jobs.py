@@ -19,7 +19,7 @@ from orchestrator.services.agent import agent_service
 from orchestrator.services.r2 import r2_service
 from orchestrator.services.render import render_service
 from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, PROMPT_ROTATE
-from orchestrator.telegram.bot import telegram_bot
+from orchestrator.line.bot import line_bot
 
 logger = logging.getLogger(__name__)
 
@@ -296,17 +296,16 @@ async def step_render(state: JobState) -> None:
     state.status = JobStatus.gate_preview
     await store.save(state)
 
-    # Send preview to Telegram for Gate 2
     if state.line_user_id:
         try:
-            await telegram_bot.send_gate_preview(
+            await line_bot.send_gate_preview(
                 chat_id=state.line_user_id,
                 job_id=state.job_id,
                 video_url=url,
-                callback_url=state.callback_url,
+                thumbnail_url=state.thumbnail_url,
             )
         except Exception as e:
-            logger.warning(f"[{state.job_id}] Telegram send_gate_preview failed: {e}")
+            logger.warning(f"[{state.job_id}] LINE send_gate_preview failed: {e}")
 
 
 # ── Step 4: Deliver ──
@@ -319,12 +318,15 @@ async def step_deliver(state: JobState) -> None:
     state.status = JobStatus.done
     await store.save(state)
 
-    # Notify via Telegram
     if state.line_user_id and state.final_url:
         try:
-            await telegram_bot.send_final(state.line_user_id, state.final_url)
+            await line_bot.send_final(
+                state.line_user_id,
+                state.final_url,
+                state.thumbnail_url,
+            )
         except Exception as e:
-            logger.warning(f"[{state.job_id}] Telegram send_final failed: {e}")
+            logger.warning(f"[{state.job_id}] LINE send_final failed: {e}")
 
 
 # ── Build RenderInput ──
