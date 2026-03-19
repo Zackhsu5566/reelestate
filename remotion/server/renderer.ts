@@ -6,7 +6,7 @@ import type { RenderInput } from "./types";
 
 const ENTRY_POINT = path.resolve(__dirname, "..", "..", "src", "index.ts");
 const PUBLIC_DIR = path.resolve(__dirname, "..", "..", "public");
-const RENDER_TIMEOUT = 300_000; // 5 minutes
+const RENDER_TIMEOUT = 600_000; // 10 minutes (Mapbox map tiles increase render time)
 
 function log(jobId: string, msg: string) {
   console.log(JSON.stringify({ ts: new Date().toISOString(), jobId, module: "renderer", msg }));
