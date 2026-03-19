@@ -1,0 +1,46 @@
+{
+  "raw_text": "京城水森林 2房2廳1衛露臺戶\n高雄市楠梓區\n格局：2房2廳1衛1陽台（外加專用大露臺）\n總價：1,212萬元\n總坪數：42坪\n房屋坪數：32.9坪\n屋齡：12年\n樓層：2樓/15樓\n朝向：坐東朝西\n管理費：2,281元/月\n社區：京城水森林\n型態：電梯大樓\n聯絡人：張東宇 經理\n聯絡電話：0917-877-077\n所屬：永慶不動產楠梓國中加盟店",
+  "spaces": [
+    {
+      "label": "客廳",
+      "photos": [
+        "https://assets.replowapp.com/3.17TEST/2026.3.17test/%E5%AE%A2%E5%BB%B3.webp",
+        "https://assets.replowapp.com/3.17TEST/2026.3.17test/%E5%AE%A2%E5%BB%B31.webp"
+      ]
+    },
+    {
+      "label": "廁所s",
+      "photos": [
+        "https://assets.replowapp.com/3.17TEST/2026.3.17test/%E5%BB%81%E6%89%80s.webp"
+      ]
+    },
+    {
+      "label": "廚房",
+      "photos": [
+        "https://assets.replowapp.com/3.17TEST/2026.3.17test/%E5%BB%9A%E6%88%BFk.webp"
+      ]
+    },
+    {
+      "label": "主臥",
+      "photos": [
+        "https://assets.replowapp.com/3.17TEST/2026.3.17test/%E6%88%BF%E9%96%931.webp"
+      ]
+    },
+    {
+      "label": "次臥s",
+      "photos": [
+        "https://assets.replowapp.com/3.17TEST/2026.3.17test/%E6%88%BF%E9%96%932s.webp"
+      ]
+    },
+    {
+      "label": "陽台",
+      "photos": [
+        "https://assets.replowapp.com/3.17TEST/2026.3.17test/%E9%99%BD%E5%8F%B01.1.webp",
+        "https://assets.replowapp.com/3.17TEST/2026.3.17test/%E9%99%BD%E5%8F%B01.webp"
+      ]
+    }
+  ],
+  "exterior_photo": "https://assets.replowapp.com/3.17TEST/2026.3.17test/%E5%A4%A7%E6%A8%93%E5%A4%96%E8%A7%80.webp",
+  "premium": true,
+  "staging_template": "japanese_muji"
+}

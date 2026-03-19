@@ -175,15 +175,6 @@ STAGING_TEMPLATES: dict[str, str] = {
         "Clean, functional, and bright atmosphere. Balanced minimalism with warmth. "
         "Interior photography, natural daylight, realistic materials."
     ),
-    "modern_minimalist": (
-        "Transform the interior into a modern minimalist style. "
-        "Preserve the original layout completely. "
-        "Use monochrome palette (white, gray, black), sleek furniture, clean surfaces. "
-        "Reduce decoration, emphasize open space and geometry. "
-        "Add subtle lighting accents and modern materials like glass and metal. "
-        "High-end, clean, elegant atmosphere. "
-        "Interior photography, sharp lines, realistic rendering."
-    ),
     "modern_luxury": (
         "Transform the interior into a modern luxury style. "
         "Keep original structure unchanged. "
