@@ -37,11 +37,9 @@ class LineBot:
         }
 
     async def _push(self, to: str, messages: list[dict]) -> None:
-        payload = {"to": to, "messages": messages}
-        logger.info(f"LINE Push payload: {payload}")
         resp = await self.client.post(
             PUSH_URL,
-            json=payload,
+            json={"to": to, "messages": messages},
             headers=self._headers(),
         )
         if resp.status_code >= 400:
