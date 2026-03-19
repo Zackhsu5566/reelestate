@@ -1,6 +1,6 @@
 # Pipeline Simplification Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 移除 TTS/ForcedAligner/Qwen multi-angle，切換 Kling v1.6，固定 prompt，staging 改模板選擇 — 大幅簡化 pipeline。
 
@@ -17,7 +17,7 @@
 **Files:**
 - Modify: `orchestrator/models.py`
 
-- [ ] **Step 1: 更新 JobStatus enum**
+- [x] **Step 1: 更新 JobStatus enum**
 
 移除 `gate_script`、`tts`、`gate_audio`：
 
@@ -32,7 +32,7 @@ class JobStatus(str, Enum):
     failed = "failed"
 ```
 
-- [ ] **Step 2: 更新 SpaceInput**
+- [x] **Step 2: 更新 SpaceInput**
 
 `force_ken_burns` → `is_small_space`：
 
@@ -43,7 +43,7 @@ class SpaceInput(BaseModel):
     is_small_space: bool = False  # Set by _preprocess_spaces when label ends with 's'
 ```
 
-- [ ] **Step 3: 簡化 SpaceInfo**
+- [x] **Step 3: 簡化 SpaceInfo**
 
 移除 VLM/角度/ken_burns 相關欄位：
 
@@ -57,11 +57,11 @@ class SpaceInfo(BaseModel):
     staging_prompt: str | None = None
 ```
 
-- [ ] **Step 4: 移除 VisualObservation class**
+- [x] **Step 4: 移除 VisualObservation class**
 
 刪除整個 `VisualObservation` class（不再需要 VLM 分析）。
 
-- [ ] **Step 5: 簡化 AgentResult**
+- [x] **Step 5: 簡化 AgentResult**
 
 移除 `style_direction` 和 `estimated_video_duration_sec`：
 
@@ -74,7 +74,7 @@ class AgentResult(BaseModel):
     meta: AgentMeta | None = None
 ```
 
-- [ ] **Step 6: 移除 JobState 中 TTS/Alignment 欄位**
+- [x] **Step 6: 移除 JobState 中 TTS/Alignment 欄位**
 
 移除 `audio_url`、`sections`、`captions`、`total_duration_ms`、`total_duration_frames`。新增 `staging_template`：
 
@@ -97,7 +97,7 @@ class JobState(BaseModel):
     errors: list[str] = []
 ```
 
-- [ ] **Step 7: 更新 CreateJobRequest**
+- [x] **Step 7: 更新 CreateJobRequest**
 
 新增 `staging_template`：
 
@@ -112,7 +112,7 @@ class CreateJobRequest(BaseModel):
     callback_url: str = ""
 ```
 
-- [ ] **Step 8: 新增 STAGING_TEMPLATES 常數**
+- [x] **Step 8: 新增 STAGING_TEMPLATES 常數**
 
 在 `models.py` 底部新增：
 
@@ -164,7 +164,7 @@ STAGING_TEMPLATES: dict[str, str] = {
 }
 ```
 
-- [ ] **Step 9: 驗證 models.py 語法正確**
+- [x] **Step 9: 驗證 models.py 語法正確**
 
 Run: `cd C:/Users/being/Projects/ReelEstate && python -c "from orchestrator.models import *; print('OK')"`
 Expected: `OK`
@@ -176,7 +176,7 @@ Expected: `OK`
 **Files:**
 - Modify: `orchestrator/services/wavespeed.py`
 
-- [ ] **Step 1: 移除 Qwen Edit，切換 Kling model**
+- [x] **Step 1: 移除 Qwen Edit，切換 Kling model**
 
 ```python
 # 移除
@@ -187,11 +187,11 @@ MODEL_KLING = "kwaivgi/kling-v1.6-i2v-standard"  # was v2.5-turbo-pro
 MODEL_STAGING = "google/nano-banana-2/edit"       # 不變
 ```
 
-- [ ] **Step 2: 移除 qwen_edit 和 qwen_edit_submit 方法**
+- [x] **Step 2: 移除 qwen_edit 和 qwen_edit_submit 方法**
 
 刪除 `qwen_edit()`（行 76-87）和 `qwen_edit_submit()`（行 89-103）。
 
-- [ ] **Step 3: 改寫 kling_video 和 kling_submit**
+- [x] **Step 3: 改寫 kling_video 和 kling_submit**
 
 從雙圖（first_frame + last_frame）改為單圖 + prompt：
 
@@ -225,7 +225,7 @@ async def kling_submit(self, image_url: str, prompt: str) -> str:
     )
 ```
 
-- [ ] **Step 4: 驗證 wavespeed.py 語法正確**
+- [x] **Step 4: 驗證 wavespeed.py 語法正確**
 
 Run: `cd C:/Users/being/Projects/ReelEstate && python -c "from orchestrator.services.wavespeed import wavespeed; print('OK')"`
 Expected: `OK`
@@ -237,7 +237,7 @@ Expected: `OK`
 **Files:**
 - Modify: `orchestrator/main.py`
 
-- [ ] **Step 1: 改寫 _preprocess_spaces()**
+- [x] **Step 1: 改寫 _preprocess_spaces()**
 
 移除 `k` 後綴 / `.1` 配對邏輯，改為 `s` 後綴處理：
 
@@ -259,7 +259,7 @@ def _preprocess_spaces(spaces: list[SpaceInput]) -> list[SpaceInput]:
     return processed
 ```
 
-- [ ] **Step 2: 更新 create_job route**
+- [x] **Step 2: 更新 create_job route**
 
 在 `create_job` 中把 `staging_template` 傳進 JobState：
 
@@ -283,7 +283,7 @@ async def create_job(req: CreateJobRequest):
     return {"job_id": job_id, "status": "analyzing"}
 ```
 
-- [ ] **Step 3: 移除 minimax_tts 和 worker_c 的 import 和 lifecycle**
+- [x] **Step 3: 移除 minimax_tts 和 worker_c 的 import 和 lifecycle**
 
 從 `main.py` 移除：
 - `from orchestrator.services.minimax_tts import minimax_tts`
@@ -291,11 +291,11 @@ async def create_job(req: CreateJobRequest):
 - lifespan 中的 `await worker_c.start()` / `await worker_c.close()`
 - lifespan 中的 `await minimax_tts.start()` / `await minimax_tts.close()`
 
-- [ ] **Step 4: 更新 resume logic**
+- [x] **Step 4: 更新 resume logic**
 
 lifespan 中 `state.status in (...)` 也要更新（移除 `JobStatus.tts` 等已不存在的狀態）。目前只 resume `generating` 和 `rendering`，這兩個保留即可，不需改動。
 
-- [ ] **Step 5: 驗證 main.py 語法正確**
+- [x] **Step 5: 驗證 main.py 語法正確**
 
 Run: `cd C:/Users/being/Projects/ReelEstate && python -c "from orchestrator.main import app; print('OK')"`
 Expected: `OK`
@@ -307,7 +307,7 @@ Expected: `OK`
 **Files:**
 - Modify: `orchestrator/pipeline/gates.py`
 
-- [ ] **Step 1: 只保留 preview gate**
+- [x] **Step 1: 只保留 preview gate**
 
 ```python
 GATE_STATUS_MAP = {
@@ -319,7 +319,7 @@ GATE_NEXT_STATUS = {
 }
 ```
 
-- [ ] **Step 2: 驗證 gates.py 語法正確**
+- [x] **Step 2: 驗證 gates.py 語法正確**
 
 Run: `cd C:/Users/being/Projects/ReelEstate && python -c "from orchestrator.pipeline.gates import handle_gate_callback; print('OK')"`
 Expected: `OK`
@@ -331,11 +331,11 @@ Expected: `OK`
 **Files:**
 - Modify: `orchestrator/telegram/bot.py`
 
-- [ ] **Step 1: 移除 send_gate_script 和 send_gate_audio 方法**
+- [x] **Step 1: 移除 send_gate_script 和 send_gate_audio 方法**
 
 刪除 `send_gate_script()`（行 84-92）和 `send_gate_audio()`（行 94-103）。保留 `send_gate_preview`、`send_final`、基礎 `send_message`/`send_audio`/`send_video`。
 
-- [ ] **Step 2: 驗證 bot.py 語法正確**
+- [x] **Step 2: 驗證 bot.py 語法正確**
 
 Run: `cd C:/Users/being/Projects/ReelEstate && python -c "from orchestrator.telegram.bot import telegram_bot; print('OK')"`
 Expected: `OK`
@@ -347,7 +347,7 @@ Expected: `OK`
 **Files:**
 - Modify: `orchestrator/services/agent.py`
 
-- [ ] **Step 1: 移除照片 image blocks**
+- [x] **Step 1: 移除照片 image blocks**
 
 修改 `_build_user_content()`，不再附加照片 URL 作為 image content blocks：
 
@@ -366,7 +366,7 @@ def _build_user_content(
     return [{"type": "text", "text": json.dumps(input_json, ensure_ascii=False)}]
 ```
 
-- [ ] **Step 2: 驗證 agent.py 語法正確**
+- [x] **Step 2: 驗證 agent.py 語法正確**
 
 Run: `cd C:/Users/being/Projects/ReelEstate && python -c "from orchestrator.services.agent import agent_service; print('OK')"`
 Expected: `OK`
@@ -380,7 +380,7 @@ Expected: `OK`
 
 這是改動量最大的檔案，分步驟處理。
 
-- [ ] **Step 1: 清理 imports**
+- [x] **Step 1: 清理 imports**
 
 移除不再需要的 imports：
 
@@ -402,7 +402,7 @@ from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, PROMPT_R
 from orchestrator.models import AssetTask, JobState, JobStatus, SpaceInfo, SpaceInput, STAGING_TEMPLATES
 ```
 
-- [ ] **Step 2: 改寫 pipeline_runner**
+- [x] **Step 2: 改寫 pipeline_runner**
 
 移除 TTS/gate_script/gate_audio 步驟：
 
@@ -434,7 +434,7 @@ async def pipeline_runner(job_id: str) -> None:
         await store.set_status(job_id, JobStatus.failed)
 ```
 
-- [ ] **Step 3: 改寫 step_analyze**
+- [x] **Step 3: 改寫 step_analyze**
 
 分析完直接進入 `generating`（跳過 gate_script）：
 
@@ -457,11 +457,11 @@ async def step_analyze(state: JobState) -> None:
             logger.warning(f"[{state.job_id}] Agent missing fields: {result.meta.missing_fields}")
 ```
 
-- [ ] **Step 4: 刪除 step_tts**
+- [x] **Step 4: 刪除 step_tts**
 
 刪除整個 `step_tts` function（行 107-137）。
 
-- [ ] **Step 5: 新增 _reverse_video helper**
+- [x] **Step 5: 新增 _reverse_video helper**
 
 ```python
 async def _reverse_video(video_url: str) -> str:
@@ -500,7 +500,7 @@ async def _reverse_video(video_url: str) -> str:
             os.unlink(out_path)
 ```
 
-- [ ] **Step 6: 新增 _task_kling_video**
+- [x] **Step 6: 新增 _task_kling_video**
 
 取代 `_task_clip_direct` 和 `_task_angle_then_clip`：
 
@@ -542,7 +542,7 @@ async def _task_kling_video(
         raise
 ```
 
-- [ ] **Step 7: 新增 _task_exterior_video**
+- [x] **Step 7: 新增 _task_exterior_video**
 
 ```python
 async def _task_exterior_video(state: JobState) -> None:
@@ -575,7 +575,7 @@ async def _task_exterior_video(state: JobState) -> None:
         logger.warning(f"Exterior video failed: {e}")
 ```
 
-- [ ] **Step 8: 改寫 step_generate**
+- [x] **Step 8: 改寫 step_generate**
 
 ```python
 async def step_generate(state: JobState) -> None:
@@ -640,7 +640,7 @@ async def step_generate(state: JobState) -> None:
     await store.save(state)
 ```
 
-- [ ] **Step 9: 刪除舊 task functions**
+- [x] **Step 9: 刪除舊 task functions**
 
 刪除：
 - `_task_align()`（行 218-253）
@@ -649,7 +649,7 @@ async def step_generate(state: JobState) -> None:
 
 保留 `_task_staging()`（不變）和 `_find_input_space()`（不變）。
 
-- [ ] **Step 10: 改寫 _build_render_input**
+- [x] **Step 10: 改寫 _build_render_input**
 
 ```python
 # Fixed durations (frames at 30fps)
@@ -756,7 +756,7 @@ def _build_render_input(state: JobState) -> dict:
     return render_input
 ```
 
-- [ ] **Step 11: 驗證 jobs.py 語法正確**
+- [x] **Step 11: 驗證 jobs.py 語法正確**
 
 Run: `cd C:/Users/being/Projects/ReelEstate && python -c "from orchestrator.pipeline.jobs import pipeline_runner; print('OK')"`
 Expected: `OK`
@@ -768,7 +768,7 @@ Expected: `OK`
 **Files:**
 - Modify: `orchestrator/config.py`
 
-- [ ] **Step 1: 移除 MiniMax TTS 和 RunPod Worker C 設定**
+- [x] **Step 1: 移除 MiniMax TTS 和 RunPod Worker C 設定**
 
 刪除以下欄位（保留檔案結構，只移除不用的設定）：
 
@@ -787,7 +787,7 @@ minimax_voice_speed: float = 1.0
 minimax_voice_emotion: str = "neutral"
 ```
 
-- [ ] **Step 2: 驗證 config.py**
+- [x] **Step 2: 驗證 config.py**
 
 Run: `cd C:/Users/being/Projects/ReelEstate && python -c "from orchestrator.config import settings; print('OK')"`
 Expected: `OK`
@@ -799,7 +799,7 @@ Expected: `OK`
 **Files:**
 - Modify: `orchestrator/Dockerfile`
 
-- [ ] **Step 1: 安裝 ffmpeg**
+- [x] **Step 1: 安裝 ffmpeg**
 
 在 `RUN pip install` 之前加入：
 
@@ -829,7 +829,7 @@ CMD ["uvicorn", "orchestrator.main:app", "--host", "0.0.0.0", "--port", "8000"]
 **Files:**
 - Modify: `remotion/src/types.ts`
 
-- [ ] **Step 1: 移除不用的 types，更新 OpeningSceneInput**
+- [x] **Step 1: 移除不用的 types，更新 OpeningSceneInput**
 
 ```typescript
 import type { Caption } from "@remotion/captions";  // 移除此 import
@@ -908,7 +908,7 @@ export type VideoInput = {
 **Files:**
 - Modify: `remotion/src/ReelEstateVideo.tsx`
 
-- [ ] **Step 1: 移除 imports**
+- [x] **Step 1: 移除 imports**
 
 ```typescript
 // 移除
@@ -918,7 +918,7 @@ import { LocationScene } from "./compositions/LocationScene";
 import { CaptionsOverlay } from "./compositions/CaptionsOverlay";
 ```
 
-- [ ] **Step 2: 從 props 解構中移除 narration/captions**
+- [x] **Step 2: 從 props 解構中移除 narration/captions**
 
 ```typescript
 const {
@@ -927,11 +927,11 @@ const {
 } = props;
 ```
 
-- [ ] **Step 3: 移除 switch 中的 ken_burns 和 location case**
+- [x] **Step 3: 移除 switch 中的 ken_burns 和 location case**
 
 刪除 `case "ken_burns":` 和 `case "location":` 區塊（行 99-136）。
 
-- [ ] **Step 4: 移除 calcTotalFrames 中的 ken_burns 處理**
+- [x] **Step 4: 移除 calcTotalFrames 中的 ken_burns 處理**
 
 在 `needsFadeBetween()` 中移除 `ken_burns` 判斷：
 
@@ -949,7 +949,7 @@ function needsFadeBetween(curr: SceneInput, next: SceneInput): boolean {
 
 `calcTotalFrames()` 中也移除 `scene.type === "ken_burns"` 的判斷。
 
-- [ ] **Step 5: 移除 Audio (narration) 和 CaptionsOverlay**
+- [x] **Step 5: 移除 Audio (narration) 和 CaptionsOverlay**
 
 在 return JSX 中：
 - 移除 `<Audio src={staticFile(narration)} volume={1} />`
@@ -965,7 +965,7 @@ return (
 );
 ```
 
-- [ ] **Step 6: 驗證 TypeScript 編譯**
+- [x] **Step 6: 驗證 TypeScript 編譯**
 
 Run: `cd C:/Users/being/Projects/ReelEstate/remotion && npx tsc --noEmit`
 Expected: 無 error（可能有 warning，只要沒 error 就 OK）
@@ -977,14 +977,14 @@ Expected: 無 error（可能有 warning，只要沒 error 就 OK）
 **Files:**
 - Modify: `remotion/src/compositions/OpeningScene.tsx`
 
-- [ ] **Step 1: 加入 Video import**
+- [x] **Step 1: 加入 Video import**
 
 ```typescript
 import { AbsoluteFill, Img, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { OffthreadVideo } from "remotion";  // 新增
 ```
 
-- [ ] **Step 2: 更新 Props type**
+- [x] **Step 2: 更新 Props type**
 
 ```typescript
 type Props = {
@@ -1003,11 +1003,11 @@ type Props = {
 };
 ```
 
-- [ ] **Step 3: 更新組件內的 exteriorPhoto → exteriorVideo**
+- [x] **Step 3: 更新組件內的 exteriorPhoto → exteriorVideo**
 
 在函數參數解構、`showExterior` 判斷中，全部改為 `exteriorVideo`。
 
-- [ ] **Step 4: 把 `<Img>` 改為 `<OffthreadVideo>`**
+- [x] **Step 4: 把 `<Img>` 改為 `<OffthreadVideo>`**
 
 將外觀部分的 `<Img>` 替換為影片播放，移除 Ken Burns scale 效果：
 
@@ -1028,7 +1028,7 @@ type Props = {
 
 移除 `exteriorScale` 相關的 interpolate（不再需要 Ken Burns zoom）。
 
-- [ ] **Step 5: 驗證 TypeScript 編譯**
+- [x] **Step 5: 驗證 TypeScript 編譯**
 
 Run: `cd C:/Users/being/Projects/ReelEstate/remotion && npx tsc --noEmit`
 Expected: 無 error
@@ -1042,7 +1042,7 @@ Expected: 無 error
 - Delete or mark unused: `remotion/src/compositions/CaptionsOverlay.tsx`
 - Delete or mark unused: `remotion/src/compositions/LocationScene.tsx`
 
-- [ ] **Step 1: 刪除三個不再使用的組件檔案**
+- [x] **Step 1: 刪除三個不再使用的組件檔案**
 
 ```bash
 cd C:/Users/being/Projects/ReelEstate/remotion
@@ -1051,12 +1051,12 @@ rm src/compositions/CaptionsOverlay.tsx
 rm src/compositions/LocationScene.tsx
 ```
 
-- [ ] **Step 2: 確認沒有其他檔案 import 這些組件**
+- [x] **Step 2: 確認沒有其他檔案 import 這些組件**
 
 Run: `grep -r "KenBurnsScene\|CaptionsOverlay\|LocationScene" C:/Users/being/Projects/ReelEstate/remotion/src/ --include="*.tsx" --include="*.ts"`
 Expected: 無結果（已在 Task 11 中從 ReelEstateVideo.tsx 移除 import）
 
-- [ ] **Step 3: 驗證 TypeScript 編譯**
+- [x] **Step 3: 驗證 TypeScript 編譯**
 
 Run: `cd C:/Users/being/Projects/ReelEstate/remotion && npx tsc --noEmit`
 Expected: 無 error
@@ -1068,11 +1068,11 @@ Expected: 無 error
 **Files:**
 - Modify: `agent/SKILL.md`
 
-- [ ] **Step 1: 讀取現有 SKILL.md**
+- [x] **Step 1: 讀取現有 SKILL.md**
 
 先讀取 `C:\Users\being\Projects\ReelEstate\agent\SKILL.md` 了解結構。
 
-- [ ] **Step 2: 精簡 SKILL.md**
+- [x] **Step 2: 精簡 SKILL.md**
 
 保留：
 - 物件資訊提取（PropertyInfo 所有欄位）
@@ -1092,7 +1092,7 @@ Expected: 無 error
 
 更新 JSON 輸出格式範例，使之與新的 `AgentResult` / `SpaceInfo` model 一致。
 
-- [ ] **Step 3: 驗證 SKILL.md 中的 JSON 範例可被 AgentResult 解析**
+- [x] **Step 3: 驗證 SKILL.md 中的 JSON 範例可被 AgentResult 解析**
 
 寫一個簡單測試：拷貝 SKILL.md 中的 JSON 範例，確認 `AgentResult.model_validate_json()` 能解析。
 
@@ -1100,27 +1100,27 @@ Expected: 無 error
 
 ### Task 15: 整合驗證
 
-- [ ] **Step 1: Orchestrator 全模組 import 測試**
+- [x] **Step 1: Orchestrator 全模組 import 測試**
 
 Run: `cd C:/Users/being/Projects/ReelEstate && python -c "from orchestrator.main import app; from orchestrator.pipeline.jobs import pipeline_runner; from orchestrator.pipeline.gates import handle_gate_callback; print('All imports OK')"`
 Expected: `All imports OK`
 
-- [ ] **Step 2: Remotion TypeScript 編譯**
+- [x] **Step 2: Remotion TypeScript 編譯**
 
 Run: `cd C:/Users/being/Projects/ReelEstate/remotion && npx tsc --noEmit`
 Expected: 無 error
 
-- [ ] **Step 3: Docker build 測試**
+- [x] **Step 3: Docker build 測試**
 
 Run: `cd C:/Users/being/Projects/ReelEstate && docker build -f orchestrator/Dockerfile -t reelestate-orchestrator-test .`
 Expected: Build 成功
 
-- [ ] **Step 4: 驗證 ffmpeg 在 Docker 中可用**
+- [x] **Step 4: 驗證 ffmpeg 在 Docker 中可用**
 
 Run: `docker run --rm reelestate-orchestrator-test ffmpeg -version`
 Expected: 顯示 ffmpeg 版本資訊
 
-- [ ] **Step 5: 準備測試 input.json mock**
+- [x] **Step 5: 準備測試 input.json mock**
 
 建立一個 mock input.json 用於本地 Remotion preview 測試，確認新的 scene 結構能正確 render。格式應遵循新的 types（無 narration/captions/ken_burns，有 exteriorVideo）。
 
@@ -1128,7 +1128,7 @@ Expected: 顯示 ffmpeg 版本資訊
 
 ### Task 16: 更新 Memory
 
-- [ ] **Step 1: 更新 project memory**
+- [x] **Step 1: 更新 project memory**
 
 更新 `C:\Users\being\.claude\projects\C--Users-being\memory\MEMORY.md` 和相關 memory 檔案，反映：
 - Kling 版本變更

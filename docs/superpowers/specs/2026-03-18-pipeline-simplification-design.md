@@ -1,7 +1,7 @@
 # Pipeline Simplification: 移除 TTS、Qwen Multi-Angle、降級 Kling
 
 **日期**：2026-03-18
-**狀態**：設計完成，待實作
+**狀態**：已實作完成（2026-03-19）
 
 ---
 

@@ -25,14 +25,14 @@ n8n：接收 webhook → 依標記分組照片 → 上傳 R2 → POST /jobs
 │  📩 Gate 1.5：推音訊試聽（Telegram）                    │
 │     不通過 → 調整講稿或 TTS 參數 → 重跑 TTS            │
 │                                                     │
-│  ③ 平行呼叫 WaveSpeed API + Render Server：           │
+│  ③ 平行呼叫 WaveSpeed API：                           │
 │     ├─ Qwen Edit（需要的空間）→ 第二角度圖              │
 │     │    └→ Kling（首尾幀）→ 影片片段                   │
 │     ├─ Kling（原圖配對的空間）→ 影片片段                │
 │     ├─ nano-banana-2 → 虛擬裝潢圖（若 premium）        │
 │                                                     │
-│  ④ ForcedAligner 結果 + 素材到齊後：                   │
-│     → 組 input.json（含各 scene durationInFrames）     │
+│  ④ 素材到齊後：                                       │
+│     → 組 input.json（固定 durationInFrames 常數）      │
 │     → VPS Remotion render → 預覽影片                   │
 │                                                     │
 │  📩 Gate 2：推預覽影片給房仲確認（Telegram）              │
@@ -49,7 +49,7 @@ n8n：接收 webhook → 依標記分組照片 → 上傳 R2 → POST /jobs
 |------|------|------|
 | 同空間兩張照片（客廳） | 直接丟 Kling API | 最穩，最自然 |
 | 只有一張照片（其他房間） | Qwen Edit 生第二角度 → Kling API | 可用，家具可能小變形 |
-| 小空間（陽台/廁所/浴室等） | Ken Burns 靜態圖動畫（zoom + pan） | 省成本，效果自然 |
+| 小空間（陽台/廁所/浴室等） | 同樣使用 Kling 首尾幀影片 | 統一品質 |
 
 ### Kling 首尾幀順序
 - **首幀**：Qwen Edit 生成的角度（或第二張原圖）
@@ -78,7 +78,7 @@ API 用數值角度（非文字 prompt），由 Agent 呼叫 VLM 分析照片後
 
 不使用俯視角度（vertical_angle 保持 0）。
 
-## 語音 + 字幕策略
+## 語音策略
 
 ### 講稿格式（Agent 輸出，帶 section marker）
 ```
@@ -101,43 +101,28 @@ API 用數值角度（非文字 prompt），由 Agent 呼叫 VLM 分析照片後
 售價2,980萬，歡迎來電洽詢。
 ```
 
-### TTS + ForcedAligner 流程
+### TTS 流程
 ```
 整段講稿 → MiniMax T2A → narration.mp3
                            ↓
               📩 Gate 1.5：房仲試聽
                            ↓ OK
-        Qwen3-ForcedAligner（mp3 + 講稿原文）
-                           ↓
-              字元級 timestamps（簡體）
-                           ↓
-                        後處理：
-              1. 用 index 對應回原始繁體字
-              2. 去重（處理重複段）
-              3. 依 section marker 位置切出各 scene 起訖秒數
-              4. 分詞（jieba）→ 合併成詞級 timestamps
-                           ↓
-        ├→ 各 scene durationInFrames
-        └→ captions 陣列（詞級，繁體）→ CaptionsOverlay
+              繼續素材生成 pipeline
 ```
 
-### ForcedAligner 注意事項
-- 輸出為**簡體字元級**，需用原始講稿 index 對應回繁體
-- 可能出現重複段，需去重處理
-- 字幕顯示用**原始繁體文字**，ForcedAligner 只取時間戳
-
 ### 時長決定方式
-影片總長 = TTS 音訊長度。各 scene 時長由 Agent 講稿長度決定：
+各 scene 時長使用**固定常數**，不再依賴語音對齊：
 
-| Scene | 時長來源 | 旁白內容 |
-|-------|---------|---------|
-| OpeningScene | ForcedAligner `[OPENING]` 區間 | 標題 hook |
-| ClipScene × N | ForcedAligner 各空間區間 | 空間介紹 |
-| KenBurnsScene × N | ForcedAligner 各空間區間 | 空間介紹（小空間） |
-| StatsScene | ForcedAligner `[STATS]` 區間 | 物件資訊（坪數、格局等） |
-| CTAScene | ForcedAligner `[CTA]` 區間 | 價格 + 聯絡方式 |
+| 常數 | 值 | 時長 |
+|------|---|------|
+| OPENING_FRAMES | 300 | 10s |
+| CLIP_FRAMES | 150 | 5s（每個房間） |
+| STATS_FRAMES | 140 | ~4.7s |
+| CTA_FRAMES | 90 | 3s |
+| TRANSITION_FRAMES | 15 | 0.5s（fade） |
 
-Agent 透過控制各段講稿長度，間接決定每個鏡頭的秒數。
+影片總長 = Opening + (Clip × N) + Stats + CTA + 轉場。
+TTS 音訊獨立播放，不影響場景時長。
 
 ## 虛擬裝潢（WaveSpeed nano-banana-2/edit）
 
@@ -156,7 +141,7 @@ Agent 透過控制各段講稿長度，間接決定每個鏡頭的秒數。
 
 ### 裝潢 Reveal 規則
 - 每個空間**只有最後一個 clip** 接裝潢圖
-- 裝潢圖顯示時間包含在該空間的 ForcedAligner 區間內
+- 裝潢圖以 wipe 轉場顯示（CLIP_FRAMES = 150 frames）
 - 素材路徑：`public/images/<空間名稱>.jpg`
 
 ## 模型 / API 清單
@@ -166,8 +151,8 @@ Agent 透過控制各段講稿長度，間接決定每個鏡頭的秒數。
 | `wavespeed-ai/qwen-image/edit-multiple-angles` | 第二角度生成 | **WaveSpeed API** | 已測試 ✅（~9.4s） |
 | `kwaivgi/kling-v2.5-turbo-pro/image-to-video` | 首尾幀 → 影片片段（無音訊） | **WaveSpeed API** | 已測試 ✅（品質佳，~95s） |
 | MiniMax T2A (speech-02-hd) | 文字轉語音（Chinese_casual_guide_vv2） | **MiniMax API** | 已測試 ✅ |
-| Qwen3-ForcedAligner | 語音文字對齊 → 字元級 timestamps | RunPod Worker C | 已跑通（需後處理） ✅ |
-| Remotion | 剪輯 + 字幕 + 動畫 | VPS | v2 開發中 |
+| Qwen3-ForcedAligner | 語音文字對齊 → 字元級 timestamps | 已淘汰（改用 MiniMax T2A 內建對齊） | — |
+| Remotion | 剪輯 + 字幕 + 動畫 | VPS | v2 完成 ✅ |
 
 ### 已淘汰
 | 模型 | 原功能 | 淘汰原因 |
@@ -179,14 +164,15 @@ Agent 透過控制各段講稿長度，間接決定每個鏡頭的秒數。
 | RunPod qwen-image-edit-2511 | 第二角度生成 | 改用 WaveSpeed `wavespeed-ai/qwen-image/edit-multiple-angles`，Worker A 退休 |
 | Kling V2.5 Turbo Std | 首尾幀影片 | 升級為 WaveSpeed Kling V2.5 Turbo Pro |
 | Qwen TTS (Worker C) | 文字轉語音（voice clone） | 改用 MiniMax T2A，預建語音免 voice clone |
+| Qwen3-ForcedAligner | 語音文字對齊 | 改用固定時長常數，不再需要語音對齊 |
 
 ## Opening 外觀展示（Premium only）
 
 ### 概念
-Premium 方案在 Opening 地圖動畫結束後，crossfade 進入建築外觀靜態照片（Ken Burns 微動效），讓觀眾在進入室內空間前先看到建築外觀：
+Premium 方案在 Opening 地圖動畫結束後，crossfade 進入建築外觀靜態照片，讓觀眾在進入室內空間前先看到建築外觀：
 
 ```
-OpeningScene（Mapbox 地圖動畫 → crossfade → 外觀照片 Ken Burns）
+OpeningScene（Mapbox 地圖動畫 → crossfade → 外觀照片）
     → ClipScene × N（室內各空間影片）
 ```
 
@@ -199,19 +185,17 @@ OpeningScene（Mapbox 地圖動畫 → crossfade → 外觀照片 Ken Burns）
 | | Standard | Premium |
 |---|---|---|
 | **Opening 地圖** | Mapbox only | Mapbox（同） |
-| **外觀展示** | 無 | Mapbox 動畫結束後 crossfade 外觀靜態照（Ken Burns 微動效） |
+| **外觀展示** | 無 | Mapbox 動畫結束後 crossfade 外觀靜態照 |
 | **Render 時間影響** | 無差異 | 無差異 |
 | **額外成本** | $0 | $0（外觀照片直接傳入，不需 AI 生成） |
 
 ### 技術實作
 - **exteriorPhoto**：房仲上傳時標記 `exterior_photo`，R2 URL 直接填入 OpeningScene
-- **Ken Burns 動畫**：與 KenBurnsScene 相同，zoom + pan 微動效
 - **非關鍵任務**：`exteriorPhoto` 缺失時跳過，Opening 直接接第一個室內空間
 
 ### 時序
 ```
 step_generate 平行執行：
-├─ _task_align              (~10s)
 ├─ _task_clip_direct × N    (~95s each, semaphore 限 3 併發)
 └─ _task_staging × N        (~38s each, non-critical)
 （外觀照片已由 n8n 上傳至 R2，無需額外 AI 生成步驟）
@@ -221,18 +205,17 @@ step_generate 平行執行：
 
 ### 影片結構
 ```
-OpeningScene（Mapbox 地圖動畫 → crossfade 外觀照 Ken Burns, premium）→ [fade] → ClipScene/KenBurnsScene × N（含 Staging reveal）→ [fade] → StatsScene → [fade] → CTAScene
+OpeningScene（Mapbox 地圖動畫 → crossfade 外觀照, premium）→ [fade] → ClipScene × N（含 Staging reveal）→ [fade] → StatsScene → [fade] → CTAScene
 ```
 
-影片總長由 TTS 音訊長度決定，各 scene 由 ForcedAligner 時間戳切分。
+各 scene 時長使用固定常數（見「時長決定方式」）。
 
 ### 轉場邏輯
 | 切換情境 | 效果 |
 |----------|------|
 | 同空間 clip → clip | 無轉場（直接接，標籤延續不重新 fade in） |
-| 同空間 ken_burns → clip（或反向） | 無轉場（直接接，標籤延續） |
 | 不同空間之間 | fade (0.5s) |
-| 最後一個 clip/ken_burns → Staging | wipe from-left (0.5s) |
+| 最後一個 clip → Staging | wipe from-left (0.5s) |
 | StagingScene → 下一個空間 | fade (0.5s) |
 | Opening → 第一個空間 | fade (0.5s) |
 | Stats → CTA | fade (0.5s) |
@@ -244,13 +227,12 @@ remotion/
 ├── ReelEstateVideo.tsx     ← 主 composition + 轉場邏輯
 ├── types.ts
 └── compositions/
-    ├── OpeningScene.tsx    ← 標題 + 地址 + 外觀照片 Ken Burns（premium exteriorPhoto）
+    ├── OpeningScene.tsx    ← 標題 + 地址 + 外觀照片（premium exteriorPhoto）
     ├── ClipScene.tsx       ← 影片片段 + 空間標籤（同空間延續，空 label 不顯示）
-    ├── KenBurnsScene.tsx   ← 小空間靜態圖 Ken Burns 動畫 + 空間標籤
     ├── StagingScene.tsx    ← 虛擬裝潢靜態圖 + 「虛擬裝潢」badge
     ├── StatsScene.tsx      ← 物件資訊卡
     ├── CTAScene.tsx        ← 價格 + 聯絡方式
-    └── CaptionsOverlay.tsx ← TikTok 風格字幕（逐字高亮）
+    └── MapboxFlyIn.tsx     ← Mapbox 地圖動畫元件
 ```
 
 ### input.json 格式
@@ -267,21 +249,16 @@ remotion/
   "agentName": "王小明 | 信義房屋",
   "exteriorPhoto": "https://r2.example.com/exterior.jpg",
   "scenes": [
-    { "type": "opening", "durationInFrames": 219 },
-    { "type": "clip", "src": "clips/客廳1.mp4", "label": "客廳", "durationInFrames": 152 },
-    { "type": "clip", "src": "clips/客廳2.mp4", "label": "客廳", "durationInFrames": 152, "stagingImage": "images/客廳.jpg" },
-    { "type": "ken_burns", "src": "images/陽台.jpg", "label": "陽台", "durationInFrames": 120 },
-    { "type": "clip", "src": "clips/主臥.mp4", "label": "主臥", "durationInFrames": 192, "stagingImage": "images/主臥.jpg" },
-    { "type": "stats", "durationInFrames": 165 },
-    { "type": "cta", "durationInFrames": 96 }
+    { "type": "opening", "durationInFrames": 300 },
+    { "type": "clip", "src": "clips/客廳1.mp4", "label": "客廳", "durationInFrames": 150 },
+    { "type": "clip", "src": "clips/客廳2.mp4", "label": "客廳", "durationInFrames": 150, "stagingImage": "images/客廳.jpg" },
+    { "type": "clip", "src": "clips/陽台.mp4", "label": "陽台", "durationInFrames": 150 },
+    { "type": "clip", "src": "clips/主臥.mp4", "label": "主臥", "durationInFrames": 150, "stagingImage": "images/主臥.jpg" },
+    { "type": "stats", "durationInFrames": 140 },
+    { "type": "cta", "durationInFrames": 90 }
   ],
   "narration": "audio/narration.mp3",
   "bgm": "audio/bgm.mp3",
-  "captions": [
-    { "text": "信義區", "startMs": 0, "endMs": 800 },
-    { "text": "精裝", "startMs": 800, "endMs": 1200 },
-    { "text": "兩房", "startMs": 1200, "endMs": 1800 }
-  ],
   "mapboxToken": "pk.xxx",
   "community": "信義之星",
   "propertyType": "電梯大樓",
@@ -301,7 +278,6 @@ remotion/
 | 轉場 | fade / wipe |
 | 空間標籤 | 半透明毛玻璃，左下角 |
 | 虛擬裝潢 badge | 金色（#FFD700），右上角 |
-| 字幕 | TikTok 風格，底部，當前詞高亮金色 |
 | 音訊 | TTS 語音 + 低音量背景音樂 |
 
 ## 自動化架構
@@ -325,8 +301,6 @@ FastAPI Orchestrator（主控，管理 job state + 呼叫所有服務）
   │    └─ `wavespeed-ai/qwen-image/edit-multiple-angles`: 第二角度生成
   │
   ├─ MiniMax T2A API（TTS，Chinese_casual_guide_vv2 預建語音）
-  │
-  ├─ RunPod Worker C（ForcedAligner + 後處理）
   │
   ├─ R2（素材暫存，步驟間傳遞）
   │
@@ -358,7 +332,6 @@ Gate 審查（Telegram 推送 + 等回覆）→ 最終 MP4 → Telegram
 - **FastAPI Orchestrator**：待決定部署位置
 - **WaveSpeed API**：Orchestrator 直接呼叫（Kling Pro / nano-banana-2 / qwen-multiple-angles）
 - **MiniMax API**：TTS（speech-02-hd，同步 HTTP 呼叫）
-- **RunPod Serverless**（非 Pod）：Worker C（ForcedAligner），用完即關
 - **VPS**：Remotion render + 薄 API endpoint
 - **R2**：步驟間傳遞檔案
 
@@ -371,18 +344,17 @@ Gate 審查（Telegram 推送 + 等回覆）→ 最終 MP4 → Telegram
 | 虛擬裝潢（`google/nano-banana-2/edit`） | 4 張 | $0.07 | **$0.28** |
 | 多角度生成（`wavespeed-ai/qwen-image/edit-multiple-angles`） | 2 張 | $0.025 | **$0.05** |
 | MiniMax T2A TTS | 1 次 | ~$0.01 | ~$0.01 |
-| ForcedAligner（RunPod Worker C） | 1 次 | ~$0.01 | ~$0.01 |
 | Remotion render（VPS） | 1 次 | ~$0 | ~$0 |
-| **合計** | | | **~$2.44**（約 NT$76） |
+| **合計** | | | **~$2.43**（約 NT$76） |
 
 ### Premium 方案（額外成本）
 | 項目 | 數量 | 單價 | 小計 |
 |------|------|------|------|
-| 外觀照片 Ken Burns（外觀照直接傳入，無需 AI 生成） | — | $0 | **$0** |
+| 外觀照片（外觀照直接傳入，無需 AI 生成） | — | $0 | **$0** |
 | **Premium 額外合計** | | | **+$0** |
 | **Premium 總計** | | | **~$2.44**（約 NT$76，與 Standard 相同） |
 
-> - Ken Burns 小空間省 $0.35/空間（不需 Kling 影片生成）
+> - 所有空間統一使用 Kling 影片
 > - 影片生成（Kling Pro）佔成本 86%
 > - 升級 Pro 版品質更好，但成本從 $1.53 → $2.44（↑ $0.91）
 > - 未來若量大可考慮降回 Turbo Std（$0.21/5s）節省成本
@@ -395,66 +367,23 @@ Gate 審查（Telegram 推送 + 等回覆）→ 最終 MP4 → Telegram
 | 目標客戶 | 房仲加盟體系 |
 | 測試對象 | 身邊房仲朋友 |
 
-## RunPod Worker 架構
-只保留 Worker C（ForcedAligner），影片生成和虛擬裝潢改用 WaveSpeed API，TTS 改用 MiniMax T2A。
+## 已淘汰的 RunPod Workers
+所有 AI 推論已遷移至 WaveSpeed API 和 MiniMax API，不再使用 RunPod：
 
-每個 Worker = Docker container，內含 ComfyUI（背景服務）+ handler.py。
-ComfyUI 負責 GPU 推論，handler.py 串流程 + 後處理（純 CPU）。
-部署方式：GitHub repo → RunPod GitHub Integration 自動 build + deploy。
-
-```
-reelestate-workers/               ← GitHub repo
-├── worker-a-qwen-edit/            Worker A: 第二角度生成
-│   ├── Dockerfile
-│   ├── start.sh
-│   ├── handler.py
-│   └── workflows/
-│       └── qwen_edit.json
-│
-└── worker-c-tts-aligner/          Worker C: 對齊 + 後處理（TTS 已遷移至 MiniMax T2A）
-    ├── Dockerfile
-    ├── start.sh
-    ├── handler.py
-    ├── process_alignment.py
-    └── workflows/
-        └── forced_aligner.json
-```
-
-### Worker 共用模式
-- `start.sh`：啟動 ComfyUI 背景 → 等就緒 → 啟動 handler.py
-- `handler.py`：接收 job → 下載素材 → 呼叫 ComfyUI API → 上傳結果到 R2 → 回傳 URL
-- `Dockerfile`：繼承 ComfyUI base → 裝 custom nodes → 下載模型 → COPY handler + workflows
-- 模型用 `huggingface-cli download` 在 build 時 bake 進 image
-- VLM 分析由 Agent 自身 VLM 能力處理，不需要 Worker
-
-### 各 Worker 模型與 Custom Nodes
-
-**Worker A（Qwen Edit）**
-- 模型：
-  - `Comfy-Org/Qwen-Image_ComfyUI` → UNET(fp8), CLIP(qwen_2.5_vl_7b), VAE
-  - `dx8152/Qwen-Edit-2509-Multiple-angles` → LoRA(镜头转换)
-  - `lightx2v/Qwen-Image-Lightning` → LoRA(Lightning-8steps-V2.0)
-- Custom Nodes：rgthree-comfy, comfyui-easy-use
-
-**Worker C（ForcedAligner only）**
-- 模型：全部由 custom nodes 自動下載
-  - Whisper base, Qwen3-ASR 1.7B, Qwen3-ForcedAligner 0.6B
-- Custom Nodes：comfyui-edgetts, ComfyUI-Qwen3-ASR
-- 注：TTS 已遷移至 MiniMax T2A，Worker C 不再處理 TTS
-
-### 已移除的 Workers
-- ~~Worker B（Wan 2.2）~~→ 改用 **Kling V2.5 Turbo Std API**（品質更好，免維護）
-- ~~Worker D（Z-Image + Upscale）~~→ 裝潢改用 **WaveSpeed `google/nano-banana-2/edit`**；Upscale 暫不需要（Kling 輸出品質已足夠）
+- ~~Worker A（Qwen Edit）~~→ 改用 WaveSpeed `wavespeed-ai/qwen-image/edit-multiple-angles`
+- ~~Worker B（Wan 2.2）~~→ 改用 WaveSpeed Kling V2.5 Turbo Pro
+- ~~Worker C（TTS + ForcedAligner）~~→ TTS 改用 MiniMax T2A，ForcedAligner 不再需要
+- ~~Worker D（Z-Image + Upscale）~~→ 裝潢改用 WaveSpeed `google/nano-banana-2/edit`
 
 ## 目前進度
 - ✅ 已手動完成第一支影片（到 Wan 2.2 + Upscale 為止）
 - ✅ Remotion v1 render 成功（9 個空間，56 秒）
 - ✅ OpenClaw Agent skill 設計完成（`agent/SKILL.md`）
-- ✅ Remotion v2：音訊驅動時長 + 轉場邏輯重寫
+- ✅ Remotion v2：固定時長常數 + 轉場邏輯重寫
 - ✅ Qwen3-ForcedAligner 驗證（字元級 timestamps，需後處理）
 - ✅ ForcedAligner 後處理腳本（`scripts/process_alignment.py`）
 - ✅ VPS Remotion render endpoint（2026-03-11 部署完成）
-- ✅ Worker C 部署完成（RunPod endpoint `391h73cn715crm`）
+- ✅ ~~Worker C 部署完成~~ → 已淘汰，ForcedAligner 不再需要
 - ✅ nano-banana-2 虛擬裝潢測試（品質優於 Z-Image）
 - ✅ 架構調整：Worker A/B/D 全改用 WaveSpeed API
 - ✅ `google/nano-banana-2/edit` 虛擬裝潢測試（品質極佳，~38s）
@@ -464,16 +393,24 @@ reelestate-workers/               ← GitHub repo
 - ✅ WaveSpeed Semaphore(3) 併發控制
 - ✅ TTS 遷移至 MiniMax T2A（speech-02-hd, Chinese_casual_guide_vv2）（2026-03-15）
 - ✅ ClipScene 同空間標籤延續 + 空 label 不顯示（2026-03-15）
-- ✅ KenBurnsScene 小空間靜態圖動畫（2026-03-15）
+- ✅ ~~KenBurnsScene / Ken Burns 動畫~~ → 已移除（2026-03-19）
 - ✅ 重命名 zImage/ZImageScene → stagingImage/StagingScene（2026-03-15）
-- ✅ 移除空拍轉場（Google 3D/CesiumJS/Kling/renderStill）→ 改為外觀照片 Ken Burns crossfade（2026-03-16）
+- ✅ 移除空拍轉場（Google 3D/CesiumJS/Kling/renderStill）→ 改為外觀照片 crossfade（2026-03-16）
+- ✅ Pipeline 簡化設計規劃完成（2026-03-18）
+- ✅ Pipeline 簡化初始實作（Orchestrator + Remotion 重構）（2026-03-18）
+- ✅ 競爭市場分析完成（`competitive-analysis-2026-03.md`）（2026-03-18）
+- ✅ RunPod Workers 全部淘汰、所有參照清理完成（2026-03-19）
+- ✅ 系統架構文件重整至根目錄（`ARCHITECTURE.md`）（2026-03-19）
+- ✅ Remotion 視覺微調：fade/wipe 時間分離、staging hold、版面修正（2026-03-19）
+- ✅ 移除 KenBurnsScene、CaptionsOverlay（改用固定時長常數）（2026-03-19）
+- ✅ 移除 ForcedAligner 依賴（場景時長改用固定常數）（2026-03-19）
 
 ## 待辦優先順序
 
 ### 整合（當前階段）
 1. ~~FastAPI Orchestrator 實作~~ ✅（E2E 測試通過 2026-03-15）
-2. ~~空拍轉場 pipeline~~ ✅ 已移除，改為外觀照片 Ken Burns（2026-03-16）
-3. VPS 部署 orchestrator + render server 更新（新增 MAPBOX_TOKEN 環境變數）
-4. OpeningScene 實作 exteriorPhoto Ken Burns crossfade（premium）
-5. 真實資料 E2E 測試
-6. TTS 場景間停頓策略（延後處理）
+2. ~~空拍轉場 pipeline~~ ✅ 已移除，改為外觀照片 crossfade（2026-03-16）
+3. ~~Pipeline 簡化~~ ✅ 初始實作完成（2026-03-18）
+4. VPS 部署 orchestrator + render server 更新（新增 MAPBOX_TOKEN 環境變數）
+5. OpeningScene 實作 exteriorPhoto crossfade（premium）
+6. 真實資料 E2E 測試
