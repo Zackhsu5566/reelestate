@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
-import type { RenderInput, SceneInput, ClipScene, OpeningScene } from "./types";
+import type { RenderInput, SceneInput, ClipScene } from "./types";
 
 const PUBLIC_DIR = path.resolve(__dirname, "..", "..", "public");
 const PER_FILE_TIMEOUT = 30_000;
@@ -114,21 +114,6 @@ export async function downloadAssets(
       }
 
       mappedScenes.push({ ...clip, src: localSrc, stagingImage: localStaging });
-    } else if (scene.type === "opening" && "exteriorVideo" in scene) {
-      const opening = scene as OpeningScene;
-      let localExterior = opening.exteriorVideo;
-      if (opening.exteriorVideo && isUrl(opening.exteriorVideo)) {
-        const ext = extFromUrl(opening.exteriorVideo);
-        localExterior = `${jobDir}/images/exterior${ext}`;
-        const absDest = path.join(PUBLIC_DIR, localExterior);
-        downloads.push(
-          downloadWithRetry(opening.exteriorVideo, absDest).then((size) => ({
-            label: "exterior",
-            size,
-          })),
-        );
-      }
-      mappedScenes.push({ ...opening, exteriorVideo: localExterior });
     } else {
       // stats/cta scenes may have a backgroundSrc URL that needs downloading
       let mapped = scene;

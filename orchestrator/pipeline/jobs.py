@@ -375,12 +375,19 @@ async def _build_render_input(state: JobState) -> dict:
 
     # Opening scene
     opening_scene: dict = {"type": "opening", "durationInFrames": OPENING_FRAMES}
-    exterior_task = state.asset_tasks.get("clip:exterior")
-    if exterior_task and exterior_task.status == "completed":
-        opening_scene["exteriorVideo"] = exterior_task.output_url
     if prop.pois:
         opening_scene["pois"] = [p.model_dump() for p in prop.pois]
     scenes.append(opening_scene)
+
+    # Exterior video (separate clip after opening)
+    exterior_task = state.asset_tasks.get("clip:exterior")
+    if exterior_task and exterior_task.status == "completed":
+        scenes.append({
+            "type": "clip",
+            "src": exterior_task.output_url,
+            "label": "",
+            "durationInFrames": CLIP_FRAMES,
+        })
 
     staging_prompt = None
     if state.premium and state.staging_template:

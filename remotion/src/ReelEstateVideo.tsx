@@ -93,7 +93,6 @@ export const ReelEstateVideo: React.FC<VideoInput> = (props) => {
               mapboxToken={props.mapboxToken}
               lat={props.lat}
               lng={props.lng}
-              exteriorVideo={scene.exteriorVideo}
               pois={scene.pois}
             />
           </TransitionSeries.Sequence>

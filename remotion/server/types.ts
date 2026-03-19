@@ -16,7 +16,6 @@ export interface Job {
 export interface OpeningScene {
   type: "opening";
   durationInFrames: number;
-  exteriorVideo?: string;
   pois?: POI[];
 }
 

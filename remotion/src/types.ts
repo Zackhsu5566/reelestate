@@ -1,7 +1,6 @@
 export type OpeningSceneInput = {
   type: "opening";
   durationInFrames: number;
-  exteriorVideo?: string;
   pois?: POI[];
 };
 

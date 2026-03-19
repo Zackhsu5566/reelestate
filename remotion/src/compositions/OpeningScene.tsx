@@ -1,4 +1,4 @@
-import { AbsoluteFill, interpolate, OffthreadVideo, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { loadFont } from "@remotion/google-fonts/NotoSansTC";
 import { loadFont as loadSerifFont } from "@remotion/google-fonts/NotoSerifTC";
 import { MapboxFlyIn, FLY_DURATION_FRAMES, POI_START_FRAME } from "./MapboxFlyIn";
@@ -23,7 +23,6 @@ type Props = {
   mapboxToken?: string;
   lat?: number;
   lng?: number;
-  exteriorVideo?: string;
   pois?: POI[];
 };
 
@@ -38,7 +37,6 @@ export const OpeningScene: React.FC<Props> = ({
   mapboxToken,
   lat,
   lng,
-  exteriorVideo,
   pois,
 }) => {
   const frame = useCurrentFrame();
@@ -47,32 +45,15 @@ export const OpeningScene: React.FC<Props> = ({
   const hasCoords = lat !== undefined && lng !== undefined;
   const showMapbox = !!(mapboxToken && hasCoords);
   const showPois = !!(pois && pois.length > 0);
-  const showExterior = !!exteriorVideo;
 
-  // Exterior crossfade: map+POI 70% → crossfade 10% → exterior 20%
-  const crossfadeStart = showExterior ? Math.round(0.70 * durationInFrames) : durationInFrames;
-  const crossfadeEnd = showExterior ? Math.round(0.80 * durationInFrames) : durationInFrames;
-
-  const mapboxOpacity = showExterior
-    ? interpolate(frame, [crossfadeStart, crossfadeEnd], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
-    : 1;
-  const exteriorOpacity = showExterior
-    ? interpolate(frame, [crossfadeStart, crossfadeEnd], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
-    : 0;
-
-  // Text fades out after fly-in (when POIs or exterior follow)
-  const textFadeStart = showPois ? FLY_DURATION_FRAMES : crossfadeStart;
-  const textFadeEnd = showPois ? FLY_DURATION_FRAMES + 30 : crossfadeEnd;
-  const textOpacity = (showPois || showExterior)
-    ? interpolate(frame, [textFadeStart, textFadeEnd], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+  // Text fades out after fly-in when POIs follow
+  const textOpacity = showPois
+    ? interpolate(frame, [FLY_DURATION_FRAMES, FLY_DURATION_FRAMES + 30], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
     : 1;
 
-  // "生活機能" header — fades in when POIs start, fades out at crossfade
+  // "生活機能" header — fades in when POIs start
   const poiHeaderOpacity = showPois
     ? interpolate(frame, [POI_START_FRAME, POI_START_FRAME + 10], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
-      * (showExterior
-        ? interpolate(frame, [crossfadeStart, crossfadeEnd], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
-        : 1)
     : 0;
 
   const locationOpacity = interpolate(frame, [0.3 * fps, 1 * fps], [0, 1], {
@@ -111,7 +92,7 @@ export const OpeningScene: React.FC<Props> = ({
     <AbsoluteFill style={{ background: "#000" }}>
       {/* Mapbox */}
       {showMapbox && (
-        <AbsoluteFill style={{ opacity: mapboxOpacity }}>
+        <AbsoluteFill>
           <MapboxFlyIn lat={lat!} lng={lng!} token={mapboxToken!} pois={showPois ? pois : undefined} />
         </AbsoluteFill>
       )}
@@ -121,20 +102,6 @@ export const OpeningScene: React.FC<Props> = ({
         <AbsoluteFill
           style={{ background: "linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%)" }}
         />
-      )}
-
-      {/* Exterior building video — crossfades in after Mapbox */}
-      {showExterior && (
-        <AbsoluteFill style={{ opacity: exteriorOpacity, overflow: "hidden" }}>
-          <OffthreadVideo
-            src={exteriorVideo!.startsWith("http") ? exteriorVideo! : staticFile(exteriorVideo!)}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-            }}
-          />
-        </AbsoluteFill>
       )}
 
       {/* Gradient overlay — dark at bottom for white text */}
