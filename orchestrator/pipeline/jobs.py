@@ -325,7 +325,7 @@ async def step_deliver(state: JobState) -> None:
 OPENING_FRAMES = 300
 CLIP_FRAMES = 150
 CLIP_SMALL_FRAMES = 105
-STATS_FRAMES = 140
+STATS_FRAMES = 210  # 7s — enough for 5 items stagger animation + hold
 CTA_FRAMES = 90
 
 
@@ -431,7 +431,7 @@ async def _build_render_input(state: JobState) -> dict:
     render_input = {
         "title": agent.title or "",
         "location": prop.location or "",
-        "address": prop.address or "",
+        "address": prop.address or prop.location or "",
         "size": prop.size or "",
         "layout": prop.layout or "",
         "floor": prop.floor or "",

@@ -16,7 +16,7 @@
 ```
 OPENING_FRAMES  = 10s = 300 frames（含 POI 生活機能）
 CLIP_FRAMES     =  5s = 150 frames（每個房間）
-STATS_FRAMES    = ~4.7s = 140 frames
+STATS_FRAMES    = 7s = 210 frames
 CTA_FRAMES      =  3s = 90 frames
 TRANSITION_FRAMES = 15 frames（0.5s fade）
 ```

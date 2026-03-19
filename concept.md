@@ -117,7 +117,7 @@ API 用數值角度（非文字 prompt），由 Agent 呼叫 VLM 分析照片後
 |------|---|------|
 | OPENING_FRAMES | 300 | 10s |
 | CLIP_FRAMES | 150 | 5s（每個房間） |
-| STATS_FRAMES | 140 | ~4.7s |
+| STATS_FRAMES | 210 | 7s |
 | CTA_FRAMES | 90 | 3s |
 | TRANSITION_FRAMES | 15 | 0.5s（fade） |
 
