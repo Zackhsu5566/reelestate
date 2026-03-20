@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     wavespeed_api_key: str = ""
     wavespeed_base_url: str = "https://api.wavespeed.ai/api/v3"
     wavespeed_poll_interval: float = 3.0
-    wavespeed_poll_timeout: float = 300.0
+    wavespeed_poll_timeout: float = 600.0
 
     # Remotion Render
     render_url: str = "https://render.replowapp.com"
