@@ -19,12 +19,6 @@ router = APIRouter()
 # Initialized in main.py lifespan
 conv_manager: ConversationManager | None = None
 
-# Debounce timers: {user_id: asyncio.Task}
-_debounce_tasks: dict[str, asyncio.Task] = {}
-
-DEBOUNCE_SECONDS = 5.0
-
-
 # Lazy import to avoid pulling in heavy pipeline deps at import time.
 # Tests patch this name directly on the module.
 handle_gate_callback = None
@@ -38,22 +32,7 @@ def _get_handle_gate_callback():
     return handle_gate_callback
 
 
-async def _debounce_finalize(user_id: str) -> None:
-    """Wait DEBOUNCE_SECONDS then finalize photo batch and ask for label."""
-    await asyncio.sleep(DEBOUNCE_SECONDS)
-    _debounce_tasks.pop(user_id, None)
-    await conv_manager.finalize_batch(user_id)
-    state = await conv_manager.get(user_id)
-    n = len(state["pending_photos"])
-    await line_bot.send_message(user_id, f"收到 {n} 張照片，這是什麼空間？")
-
-
-def _reset_debounce(user_id: str) -> None:
-    """Cancel existing debounce timer and start a new one."""
-    existing = _debounce_tasks.get(user_id)
-    if existing and not existing.done():
-        existing.cancel()
-    _debounce_tasks[user_id] = asyncio.create_task(_debounce_finalize(user_id))
+# ── Image handler ──
 
 
 async def _handle_image(user_id: str, event: dict) -> None:
@@ -61,54 +40,111 @@ async def _handle_image(user_id: str, event: dict) -> None:
     if not photo_url:
         logger.warning(f"Image event without photo_url for {user_id}")
         return
-    await conv_manager.add_photo(user_id, photo_url)
-    _reset_debounce(user_id)
 
-
-async def _handle_text(user_id: str, text: str) -> None:
     state = await conv_manager.get(user_id)
     current = state["state"]
 
-    if current == ConversationState.awaiting_label:
-        await conv_manager.assign_label(user_id, text)
-        updated = await conv_manager.get(user_id)
-        if text == "外觀":
-            await line_bot.send_message(
-                user_id, "✓ 外觀照片，請繼續傳下一張或輸入『完成』"
-            )
-        else:
-            last_space = updated["spaces"][-1] if updated["spaces"] else None
-            count = len(last_space["photos"]) if last_space else 0
-            await line_bot.send_message(
-                user_id,
-                f"✓ {text}（{count} 張），請繼續傳下一張或輸入『完成』",
-            )
+    # 不接受照片的狀態
+    if current == ConversationState.processing:
+        await line_bot.send_message(user_id, "⏳ 影片製作中，完成後會通知你！")
+        return
+    if current == ConversationState.awaiting_info:
+        await line_bot.send_message(user_id, "📝 請先輸入物件資訊。")
+        return
+    if current == ConversationState.awaiting_feedback:
+        await line_bot.send_message(user_id, "請先提供影片修改意見。")
         return
 
-    if text == "完成":
-        if current == ConversationState.collecting_photos:
-            # Cancel debounce, finalize immediately
-            existing = _debounce_tasks.pop(user_id, None)
-            if existing and not existing.done():
-                existing.cancel()
+    # idle / collecting_photos / awaiting_label 都可以加照片
+    was_idle = current == ConversationState.idle
+    await conv_manager.add_photo(user_id, photo_url)
+
+    if was_idle:
+        await line_bot.send_photo_started(user_id)
+
+
+# ── Text handler ──
+
+# 全域指令（任何狀態都能觸發）
+_RESET_COMMANDS = {"重新開始", "取消"}
+
+
+async def _handle_text(user_id: str, text: str) -> None:
+    # 全域重置
+    if text in _RESET_COMMANDS:
+        await conv_manager.reset(user_id)
+        await line_bot.send_welcome(user_id)
+        return
+
+    state = await conv_manager.get(user_id)
+    current = state["state"]
+
+    # ── collecting_photos ──
+    if current == ConversationState.collecting_photos:
+        if text in ("完成", "這批完成"):
+            count = len(state["pending_photos"])
             await conv_manager.finalize_batch(user_id)
+            await line_bot.send_label_prompt(user_id, count)
+        else:
             await line_bot.send_message(
-                user_id,
-                "收到，這批照片是什麼空間？先回覆空間名稱再輸入『完成』",
+                user_id, "📷 照片接收中，傳完後請輸入「完成」標記空間。"
             )
-            return
-
-        if not state["spaces"] and not state["exterior_photo"]:
-            await line_bot.send_message(user_id, "還沒有傳任何照片喔，請先傳照片。")
-            return
-        await conv_manager.complete_photos(user_id)
-        await line_bot.send_message(user_id, "請輸入物件資訊：")
         return
 
+    # ── awaiting_label ──
+    if current == ConversationState.awaiting_label:
+        label = text.strip()
+        if not label:
+            await line_bot.send_label_prompt(user_id, len(state["pending_photos"]))
+            return
+        await conv_manager.assign_label(user_id, label)
+        updated = await conv_manager.get(user_id)
+        if label == "外觀":
+            count = len(state["pending_photos"])
+            if count > 1:
+                await line_bot.send_message(
+                    user_id, f"✓ 外觀照片已收到（僅使用第 1 張，其餘 {count - 1} 張略過）"
+                )
+        await line_bot.send_space_summary(
+            user_id,
+            updated["spaces"],
+            bool(updated["exterior_photo"]),
+        )
+        return
+
+    # ── idle ──
+    if current == ConversationState.idle:
+        has_data = bool(state["spaces"]) or bool(state["exterior_photo"])
+
+        if text in ("完成", "全部完成"):
+            if not has_data:
+                await line_bot.send_message(user_id, "還沒有傳任何照片喔，請先傳照片 📷")
+                return
+            await conv_manager.complete_photos(user_id)
+            await line_bot.send_info_prompt(user_id)
+            return
+
+        if text == "繼續傳照片":
+            await line_bot.send_message(user_id, "好的，請繼續傳照片 📷")
+            return
+
+        # 沒有上下文的文字 → 歡迎訊息
+        await line_bot.send_welcome(user_id)
+        return
+
+    # ── awaiting_info ──
     if current == ConversationState.awaiting_info:
         await _create_job(user_id, text, state)
         return
 
+    # ── processing ──
+    if current == ConversationState.processing:
+        await line_bot.send_message(
+            user_id, "⏳ 影片製作中，完成後會通知你！"
+        )
+        return
+
+    # ── awaiting_feedback ──
     if current == ConversationState.awaiting_feedback:
         if state.get("job_id"):
             await _get_handle_gate_callback()(
@@ -120,10 +156,11 @@ async def _handle_text(user_id: str, text: str) -> None:
         await line_bot.send_message(user_id, "✓ 已收到您的回饋，我們會盡快處理。")
         return
 
-    # Default: idle state, unexpected text
-    await line_bot.send_message(
-        user_id, "請傳照片開始建立影片，或輸入『完成』結束上傳。"
-    )
+    # Fallback（理論上不會到這裡）
+    await line_bot.send_welcome(user_id)
+
+
+# ── Job creation ──
 
 
 async def _create_job(user_id: str, raw_text: str, state: dict) -> None:
@@ -151,6 +188,9 @@ async def _create_job(user_id: str, raw_text: str, state: dict) -> None:
     asyncio.create_task(pipeline_runner(job_id))
 
 
+# ── Postback handler ──
+
+
 async def _handle_postback(user_id: str, data: str) -> None:
     """Handle postback from confirm template buttons."""
     parts = data.split(":")
@@ -167,6 +207,9 @@ async def _handle_postback(user_id: str, data: str) -> None:
     elif action == "reject":
         await conv_manager.set_awaiting_feedback(user_id)
         await line_bot.send_message(user_id, "請說明需要修改的地方：")
+
+
+# ── Webhook endpoint ──
 
 
 @router.post("/webhook/line")

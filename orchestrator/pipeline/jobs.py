@@ -59,13 +59,32 @@ async def pipeline_runner(job_id: str) -> None:
         logger.exception(f"Pipeline failed for job {job_id}")
         await store.append_error(job_id, str(e))
         await store.set_status(job_id, JobStatus.failed)
+        if state and state.line_user_id:
+            try:
+                await line_bot.send_message(
+                    state.line_user_id,
+                    "❌ 影片生成失敗，請輸入「重新開始」重試或聯繫客服。",
+                )
+            except Exception:
+                pass
 
 
 # ── Step 1: Agent Analysis ──
 
 
+async def _notify_progress(state: JobState, message: str) -> None:
+    """Send LINE progress update if job was initiated via LINE."""
+    if not state.line_user_id:
+        return
+    try:
+        await line_bot.send_progress(state.line_user_id, message)
+    except Exception as e:
+        logger.warning(f"[{state.job_id}] Progress notification failed: {e}")
+
+
 async def step_analyze(state: JobState) -> None:
     logger.info(f"[{state.job_id}] step_analyze")
+    await _notify_progress(state, "📊 分析物件資訊中…")
     result = await agent_service.analyze(
         raw_text=state.raw_text,
         spaces=state.spaces_input,
@@ -217,6 +236,7 @@ async def _task_staging(
 
 async def step_generate(state: JobState) -> None:
     logger.info(f"[{state.job_id}] step_generate")
+    await _notify_progress(state, "🎨 生成影片素材中（約 3-5 分鐘）…")
     state.status = JobStatus.generating
     await store.save(state)
 
@@ -279,6 +299,7 @@ async def step_generate(state: JobState) -> None:
 
 async def step_render(state: JobState) -> None:
     logger.info(f"[{state.job_id}] step_render")
+    await _notify_progress(state, "🎬 合成影片中（約 1-2 分鐘）…")
     render_input = await _build_render_input(state)
     opening = next((s for s in render_input["scenes"] if s["type"] == "opening"), None)
     logger.info(f"[{state.job_id}] opening scene: {opening}")

@@ -20,6 +20,7 @@ async def test_start_creates_client(bot):
 async def test_send_message(bot):
     await bot.start()
     mock_response = AsyncMock()
+    mock_response.status_code = 200
     mock_response.raise_for_status = AsyncMock()
     bot._client.post = AsyncMock(return_value=mock_response)
 
@@ -39,6 +40,7 @@ async def test_send_message(bot):
 async def test_send_video(bot):
     await bot.start()
     mock_response = AsyncMock()
+    mock_response.status_code = 200
     mock_response.raise_for_status = AsyncMock()
     bot._client.post = AsyncMock(return_value=mock_response)
 
@@ -55,6 +57,7 @@ async def test_send_video(bot):
 async def test_send_gate_preview(bot):
     await bot.start()
     mock_response = AsyncMock()
+    mock_response.status_code = 200
     mock_response.raise_for_status = AsyncMock()
     bot._client.post = AsyncMock(return_value=mock_response)
 
@@ -82,6 +85,7 @@ async def test_send_gate_preview_no_thumbnail(bot):
     """When thumbnail_url is None, send only confirm template without video."""
     await bot.start()
     mock_response = AsyncMock()
+    mock_response.status_code = 200
     mock_response.raise_for_status = AsyncMock()
     bot._client.post = AsyncMock(return_value=mock_response)
 
@@ -105,6 +109,7 @@ async def test_send_gate_preview_no_thumbnail(bot):
 async def test_send_final(bot):
     await bot.start()
     mock_response = AsyncMock()
+    mock_response.status_code = 200
     mock_response.raise_for_status = AsyncMock()
     bot._client.post = AsyncMock(return_value=mock_response)
 

@@ -53,11 +53,19 @@ class ConversationManager:
             ex=CONV_TTL,
         )
 
-    async def add_photo(self, user_id: str, photo_url: str) -> None:
+    async def add_photo(self, user_id: str, photo_url: str) -> int:
+        """Add photo to pending batch. Returns updated pending count.
+
+        Only transitions to collecting_photos from idle; other states
+        (e.g. awaiting_label) keep their current state so the photo is
+        queued without disrupting the flow.
+        """
         state = await self.get(user_id)
-        state["state"] = ConversationState.collecting_photos
         state["pending_photos"].append(photo_url)
+        if state["state"] == ConversationState.idle:
+            state["state"] = ConversationState.collecting_photos
         await self._save(user_id, state)
+        return len(state["pending_photos"])
 
     async def finalize_batch(self, user_id: str) -> None:
         state = await self.get(user_id)
