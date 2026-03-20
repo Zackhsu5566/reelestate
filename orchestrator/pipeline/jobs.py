@@ -141,7 +141,7 @@ async def _task_kling_video(
     state: JobState, space_name: str, photo_index: int, photo_url: str, prompt: str,
     needs_reverse: bool = False,
 ) -> None:
-    """Single photo → Kling v1.6 video. Optionally reverse for staging."""
+    """Single photo → Kling v2.5 video. Optionally reverse for staging."""
     key = f"clip:{space_name}:{photo_index}"
     existing = state.asset_tasks.get(key)
     if existing and existing.status == "completed":
@@ -174,7 +174,7 @@ async def _task_kling_video(
 
 
 async def _task_exterior_video(state: JobState) -> None:
-    """Exterior photo → Kling v1.6 Drone Up video (non-critical)."""
+    """Exterior photo → Kling v2.5 Drone Up video (non-critical)."""
     key = "clip:exterior"
     existing = state.asset_tasks.get(key)
     if existing and existing.status == "completed":

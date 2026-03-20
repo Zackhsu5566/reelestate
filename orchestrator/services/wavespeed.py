@@ -10,47 +10,42 @@ import httpx
 from orchestrator.config import settings
 
 # Model paths
-MODEL_KLING = "kwaivgi/kling-v1.6-i2v-standard"
+MODEL_KLING = "kwaivgi/kling-v2.5-turbo-pro/image-to-video"
 MODEL_STAGING = "google/nano-banana-2/edit"
 
 # Negative prompt（shared across all Kling submissions）
 NEGATIVE_PROMPT = (
-    "Human, person, people, pedestrian, crowd, hand, finger, shadow of person, "
-    "handheld shake, camera wobble, vibration, jitter, motion blur, sudden movement, "
-    "fast motion, jerky, shaky cam, distortion, warping, morphing, new objects appearing, "
-    "mirror reflection changes, blurry, low quality, unstable frame"
+    "Human, person, people, hand, finger, shadow of person, reflection of person, "
+    "handheld, walking, footsteps, camera shake, wobble, vibration, jitter, motion blur, "
+    "sudden movement, fast motion, jerky, shaky cam, distortion, warping, morphing, "
+    "new objects appearing, changing reflections, mirror artifacts, blurry, low quality, "
+    "unstable frame"
 )
 
 # Camera movement prompts
 PROMPT_PUSH_IN = (
-    "Shot on a professional camera dolly with stabilizer. Ultra smooth gliding motion. "
-    "Cinematic dolly in, camera glides slowly forward toward the center of the room. "
-    "Steady movement. Empty interior, no people."
+    "Slowly gliding forward on a rail toward the center of the room. "
+    "Perfectly stable. No people."
 )
 PROMPT_ROTATE = (
-    "Shot on a professional camera dolly with stabilizer. Ultra smooth gliding motion. "
-    "Slow smooth horizontal pan from left to right. Camera stays in place, rotating gently. "
-    "Empty room, real estate showcase style."
+    "Slow horizontal pan from left to right. Fixed position, only rotating. "
+    "Perfectly stable. No people."
 )
 PROMPT_TRUCK_LEFT = (
-    "Shot on a professional camera dolly with stabilizer. Ultra smooth gliding motion. "
-    "Camera glides slowly to the left, parallel to the wall. Steady sliding motion. "
-    "Keep all objects stable and consistent. Empty space, no people."
+    "Sliding slowly to the left on a rail, parallel to the wall. "
+    "Perfectly stable. No people."
 )
 PROMPT_TRUCK_RIGHT = (
-    "Shot on a professional camera dolly with stabilizer. Ultra smooth gliding motion. "
-    "Camera glides slowly to the right, parallel to the wall. Steady sliding motion. "
-    "Keep all objects stable and consistent. Empty space, no people."
+    "Sliding slowly to the right on a rail, parallel to the wall. "
+    "Perfectly stable. No people."
 )
 PROMPT_PEDESTAL_UP = (
-    "Shot on a professional camera dolly with stabilizer. Ultra smooth gliding motion. "
-    "Camera rises slowly from a low angle upward. Smooth vertical lift. "
-    "Interior stays consistent. Empty room, no people."
+    "Rising slowly upward from a low angle. "
+    "Perfectly stable. No people."
 )
 PROMPT_DRONE_UP = (
-    "Shot on a professional camera dolly with stabilizer. Ultra smooth gliding motion. "
-    "Cinematic aerial view rising slowly upward, revealing the surrounding area from above. "
-    "Smooth vertical ascent. Stable frame. Empty scene, no people."
+    "Aerial view rising slowly upward, revealing the surroundings. "
+    "Perfectly stable. No people."
 )
 
 
