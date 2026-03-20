@@ -13,18 +13,44 @@ from orchestrator.config import settings
 MODEL_KLING = "kwaivgi/kling-v1.6-i2v-standard"
 MODEL_STAGING = "google/nano-banana-2/edit"
 
-# Prompt constants
-PROMPT_DRONE_UP = (
-    "Shot on a professional camera dolly with stabilizer. "
-    "Ultra smooth gliding motion, no handheld shake, no vibration. "
-    "Cinematic aerial view rising upward, revealing the surrounding area from above. "
-    "Smooth vertical ascent. Stable frame, no sudden movement."
+# Negative prompt（shared across all Kling submissions）
+NEGATIVE_PROMPT = (
+    "Human, person, people, pedestrian, crowd, hand, finger, shadow of person, "
+    "handheld shake, camera wobble, vibration, jitter, motion blur, sudden movement, "
+    "fast motion, jerky, shaky cam, distortion, warping, morphing, new objects appearing, "
+    "mirror reflection changes, blurry, low quality, unstable frame"
+)
+
+# Camera movement prompts
+PROMPT_PUSH_IN = (
+    "Shot on a professional camera dolly with stabilizer. Ultra smooth gliding motion. "
+    "Cinematic dolly in, camera glides slowly forward toward the center of the room. "
+    "Steady movement. Empty interior, no people."
 )
 PROMPT_ROTATE = (
-    "Shot on a professional camera dolly with stabilizer. "
-    "Ultra smooth gliding motion, no handheld shake, no vibration. "
-    "Smooth horizontal pan from left to right. Camera stays in place, rotating gently. "
-    "Like a real estate showcase."
+    "Shot on a professional camera dolly with stabilizer. Ultra smooth gliding motion. "
+    "Slow smooth horizontal pan from left to right. Camera stays in place, rotating gently. "
+    "Empty room, real estate showcase style."
+)
+PROMPT_TRUCK_LEFT = (
+    "Shot on a professional camera dolly with stabilizer. Ultra smooth gliding motion. "
+    "Camera glides slowly to the left, parallel to the wall. Steady sliding motion. "
+    "Keep all objects stable and consistent. Empty space, no people."
+)
+PROMPT_TRUCK_RIGHT = (
+    "Shot on a professional camera dolly with stabilizer. Ultra smooth gliding motion. "
+    "Camera glides slowly to the right, parallel to the wall. Steady sliding motion. "
+    "Keep all objects stable and consistent. Empty space, no people."
+)
+PROMPT_PEDESTAL_UP = (
+    "Shot on a professional camera dolly with stabilizer. Ultra smooth gliding motion. "
+    "Camera rises slowly from a low angle upward. Smooth vertical lift. "
+    "Interior stays consistent. Empty room, no people."
+)
+PROMPT_DRONE_UP = (
+    "Shot on a professional camera dolly with stabilizer. Ultra smooth gliding motion. "
+    "Cinematic aerial view rising slowly upward, revealing the surrounding area from above. "
+    "Smooth vertical ascent. Stable frame. Empty scene, no people."
 )
 
 
@@ -103,7 +129,13 @@ class WaveSpeedService:
         """Submit Kling video, return prediction_id."""
         return await self.submit(
             MODEL_KLING,
-            {"image": image_url, "duration": 5, "prompt": prompt, "guidance_scale": 0.75},
+            {
+                "image": image_url,
+                "duration": 5,
+                "prompt": prompt,
+                "negative_prompt": NEGATIVE_PROMPT,
+                "guidance_scale": 0.75,
+            },
         )
 
     async def staging(
