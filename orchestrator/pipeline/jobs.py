@@ -334,7 +334,7 @@ async def step_deliver(state: JobState) -> None:
 
 # ── Build RenderInput ──
 
-OPENING_FRAMES = 300
+OPENING_FRAMES = 450  # 15s
 CLIP_FRAMES = 150
 CLIP_SMALL_FRAMES = 105
 STATS_FRAMES = 210  # 7s — enough for 5 items stagger animation + hold
