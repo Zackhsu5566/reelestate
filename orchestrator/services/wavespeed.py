@@ -14,8 +14,18 @@ MODEL_KLING = "kwaivgi/kling-v1.6-i2v-standard"
 MODEL_STAGING = "google/nano-banana-2/edit"
 
 # Prompt constants
-PROMPT_DRONE_UP = "Cinematic drone shot rising vertically high above the space, revealing more of the vast surroundings."
-PROMPT_ROTATE = "Slow horizontal camera pan from left to right across the room"
+PROMPT_DRONE_UP = (
+    "Shot on a professional camera dolly with stabilizer. "
+    "Ultra smooth gliding motion, no handheld shake, no vibration. "
+    "Cinematic aerial view rising upward, revealing the surrounding area from above. "
+    "Smooth vertical ascent. Stable frame, no sudden movement."
+)
+PROMPT_ROTATE = (
+    "Shot on a professional camera dolly with stabilizer. "
+    "Ultra smooth gliding motion, no handheld shake, no vibration. "
+    "Smooth horizontal pan from left to right. Camera stays in place, rotating gently. "
+    "Like a real estate showcase."
+)
 
 
 MAX_CONCURRENT_SUBMITS = 3  # Limit parallel WaveSpeed API submits to avoid 429
@@ -93,7 +103,7 @@ class WaveSpeedService:
         """Submit Kling video, return prediction_id."""
         return await self.submit(
             MODEL_KLING,
-            {"image": image_url, "duration": 5, "prompt": prompt, "guidance_scale": 0.3},
+            {"image": image_url, "duration": 5, "prompt": prompt, "guidance_scale": 0.75},
         )
 
     async def staging(
