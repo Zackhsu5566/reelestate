@@ -534,7 +534,7 @@ async def _build_render_input(state: JobState) -> dict:
         "floor": prop.floor or "",
         "price": prop.price or "",
         "contact": prop.phone or "",
-        "agentName": prop.agent_name or "",
+        "agentName": f"{prop.agent_name} | {prop.company}" if prop.agent_name and prop.company else prop.agent_name or "",
         "scenes": scenes,
     }
 

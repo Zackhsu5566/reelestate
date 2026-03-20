@@ -100,7 +100,7 @@ class JobState(BaseModel):
     # Input
     raw_text: str = ""
     spaces_input: list[SpaceInput] = []
-    premium: bool = False
+    premium: bool = True
     exterior_photo: str | None = None  # Building exterior photo URL (displayed in OpeningScene)
     line_user_id: str = ""
 
@@ -108,7 +108,7 @@ class JobState(BaseModel):
     agent_result: AgentResult | None = None
 
     # Staging template
-    staging_template: str | None = None
+    staging_template: str | None = "japanese_muji"
 
     # Asset tasks (crash-recoverable)
     asset_tasks: dict[str, AssetTask] = {}
@@ -135,9 +135,9 @@ class SpaceInput(BaseModel):
 class CreateJobRequest(BaseModel):
     raw_text: str
     spaces: list[SpaceInput]
-    premium: bool = False
+    premium: bool = True
     exterior_photo: str | None = None  # Building exterior photo URL
-    staging_template: str | None = None
+    staging_template: str | None = "japanese_muji"
     line_user_id: str = ""
 
 
