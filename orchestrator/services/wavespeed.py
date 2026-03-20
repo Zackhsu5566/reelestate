@@ -24,8 +24,10 @@ NEGATIVE_PROMPT = (
 
 # Camera movement prompts
 PROMPT_PUSH_IN = (
-    "Slowly gliding forward on a rail toward the center of the room. "
-    "Perfectly stable. No people."
+    "Slowly dollies forward on a perfectly straight rail toward the center of the room. "
+    "The motion is extremely smooth and constant speed. The camera is fully stabilized "
+    "with no shake. All objects remain completely static and unchanged. The geometry, "
+    "lighting, and perspective are fully consistent. No people."
 )
 PROMPT_ROTATE = (
     "Slow horizontal pan from left to right. Fixed position, only rotating. "
@@ -129,7 +131,7 @@ class WaveSpeedService:
                 "duration": 5,
                 "prompt": prompt,
                 "negative_prompt": NEGATIVE_PROMPT,
-                "guidance_scale": 0.75,
+                "guidance_scale": 0.8,
             },
         )
 
