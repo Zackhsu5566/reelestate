@@ -148,7 +148,7 @@ export const ReelEstateVideo: React.FC<VideoInput> = (props) => {
         }
         seriesItems.push(
           <TransitionSeries.Sequence key={`s-${i}`} durationInFrames={scene.durationInFrames}>
-            <CTAScene contact={contact} line={line} backgroundSrc={ctaBg} />
+            <CTAScene contact={contact} line={line} agentName={agentName} backgroundSrc={ctaBg} />
           </TransitionSeries.Sequence>
         );
         break;

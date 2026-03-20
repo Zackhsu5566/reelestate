@@ -8,10 +8,11 @@ const { fontFamily } = loadFont("normal", {
 type Props = {
   contact: string;
   line?: string;
+  agentName?: string;
   backgroundSrc?: string;
 };
 
-export const CTAScene: React.FC<Props> = ({ contact, line, backgroundSrc }) => {
+export const CTAScene: React.FC<Props> = ({ contact, line, agentName, backgroundSrc }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -24,6 +25,20 @@ export const CTAScene: React.FC<Props> = ({ contact, line, backgroundSrc }) => {
     extrapolateRight: "clamp",
   });
   const logoScale = interpolate(logoProgress, [0, 1], [0.3, 1]);
+
+  // Agent name: slide up before phone
+  const nameOpacity = interpolate(frame, [0.3 * fps, 0.7 * fps], [0, 1], {
+    extrapolateRight: "clamp",
+  });
+  const nameY = interpolate(frame, [0.3 * fps, 0.7 * fps], [60, 0], {
+    extrapolateRight: "clamp",
+    easing: Easing.out(Easing.cubic),
+  });
+
+  // Parse agentName: "王小明 | 信義房屋" → name + company
+  const nameParts = agentName?.split("|").map((s) => s.trim()) ?? [];
+  const agentDisplayName = nameParts[0] || "";
+  const companyName = nameParts[1] || "";
 
   // Logo glow pulse (after entrance)
   const glowPulse = interpolate(frame, [0.8 * fps, 3 * fps], [0, Math.PI * 4], {
@@ -145,6 +160,45 @@ export const CTAScene: React.FC<Props> = ({ contact, line, backgroundSrc }) => {
             gap: 24,
           }}
         >
+          {/* Agent name & company */}
+          {agentDisplayName && (
+            <div
+              style={{
+                opacity: nameOpacity,
+                transform: `translateY(${nameY}px)`,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              {companyName && (
+                <div
+                  style={{
+                    color: "rgba(255,255,255,0.6)",
+                    fontSize: 32,
+                    fontWeight: 400,
+                    letterSpacing: 4,
+                    textShadow: "0 2px 20px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  {companyName}
+                </div>
+              )}
+              <div
+                style={{
+                  color: "white",
+                  fontSize: 48,
+                  fontWeight: 700,
+                  letterSpacing: 2,
+                  textShadow: "0 2px 20px rgba(0,0,0,0.5)",
+                }}
+              >
+                {agentDisplayName}
+              </div>
+            </div>
+          )}
+
           {/* Phone */}
           <div
             style={{
