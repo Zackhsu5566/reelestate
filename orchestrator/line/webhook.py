@@ -111,7 +111,7 @@ async def _handle_text(user_id: str, text: str) -> None:
 
     if current == ConversationState.awaiting_feedback:
         if state.get("job_id"):
-            await handle_gate_callback(
+            await _get_handle_gate_callback()(
                 job_id=state["job_id"],
                 gate="preview",
                 approved=False,
@@ -161,7 +161,7 @@ async def _handle_postback(user_id: str, data: str) -> None:
     action, job_id, gate = parts
 
     if action == "approve":
-        await handle_gate_callback(
+        await _get_handle_gate_callback()(
             job_id=job_id, gate=gate, approved=True, feedback=None
         )
     elif action == "reject":
