@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     render_url: str = "https://render.replowapp.com"
     render_token: str = "reelestate-render-token-2024"
     render_poll_interval: float = 5.0
-    render_poll_timeout: float = 600.0
+    render_poll_timeout: float = 1200.0
 
     # R2
     r2_proxy_url: str = "https://reelestate-r2-proxy.beingzackhsu.workers.dev"
