@@ -293,7 +293,9 @@ async def step_render(state: JobState) -> None:
         result = await render_service.poll(rid)
 
     state.preview_url = result["outputUrl"]
-    state.thumbnail_url = result.get("thumbnailUrl")
+    state.thumbnail_url = result.get("thumbnailUrl") or state.exterior_photo or next(
+        (p for si in state.spaces_input for p in si.photos), None
+    )
     state.status = JobStatus.gate_preview
     await store.save(state)
 
