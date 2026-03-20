@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     # Map API Keys (OpeningScene)
     mapbox_token: str = ""
+    google_places_api_key: str = ""
 
     # LINE
     line_channel_access_token: str = ""

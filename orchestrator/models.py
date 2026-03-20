@@ -36,6 +36,8 @@ class POIInfo(BaseModel):
     category: str  # mrt | supermarket | park | school | hospital | other
     distance: str  # e.g. "步行3分鐘"
     source: str | None = None  # "extracted" | "inferred"
+    lat: float | None = None
+    lng: float | None = None
 
 
 # ── Space (from Agent analysis) ──

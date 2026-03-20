@@ -375,6 +375,54 @@ async def _geocode(address: str) -> tuple[float, float] | None:
         return None
 
 
+async def _geocode_poi(
+    poi_name: str,
+    prop_lat: float,
+    prop_lng: float,
+) -> tuple[float, float] | None:
+    """Geocode a POI via Google Places Text Search with location bias."""
+    if not settings.google_places_api_key:
+        return None
+
+    cache_key = f"poi:{poi_name}:{prop_lat:.4f},{prop_lng:.4f}"
+    cached = await store.get_geo_cache(cache_key)
+    if cached and "lat" in cached and "lng" in cached:
+        return cached["lat"], cached["lng"]
+
+    url = "https://places.googleapis.com/v1/places:searchText"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": settings.google_places_api_key,
+        "X-Goog-FieldMask": "places.location",
+    }
+    body = {
+        "textQuery": poi_name,
+        "locationBias": {
+            "circle": {
+                "center": {"latitude": prop_lat, "longitude": prop_lng},
+                "radius": 2000.0,
+            }
+        },
+        "maxResultCount": 1,
+        "languageCode": "zh-TW",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(url, json=body, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+        places = data.get("places", [])
+        if not places:
+            return None
+        loc = places[0]["location"]
+        result = {"lat": loc["latitude"], "lng": loc["longitude"]}
+        await store.set_geo_cache(cache_key, result)
+        return result["lat"], result["lng"]
+    except Exception as e:
+        logger.warning(f"POI geocoding failed for '{poi_name}': {e}")
+        return None
+
+
 async def _build_render_input(state: JobState) -> dict:
     agent = state.agent_result
     prop = agent.property
@@ -382,6 +430,16 @@ async def _build_render_input(state: JobState) -> dict:
 
     # Geocode address for Mapbox map
     geo = await _geocode(prop.address or prop.location or "")
+
+    # Geocode POIs via Google Places
+    if prop.pois and geo:
+        prop_lat, prop_lng = geo
+        for poi in prop.pois:
+            if poi.lat is not None and poi.lng is not None:
+                continue
+            coords = await _geocode_poi(poi.name, prop_lat, prop_lng)
+            if coords:
+                poi.lat, poi.lng = coords
 
     # Opening scene
     opening_scene: dict = {"type": "opening", "durationInFrames": OPENING_FRAMES}

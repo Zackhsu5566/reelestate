@@ -26,45 +26,10 @@ const calculateMetadata: CalculateMetadataFunction<VideoInput> = async ({ props 
     }
   }
 
-  // Geocode POIs for location scenes
-  const updatedScenes = [...props.scenes];
-  if (lat && lng && props.mapboxToken) {
-    for (let i = 0; i < updatedScenes.length; i++) {
-      const scene = updatedScenes[i];
-      // Handle "opening" scenes with POIs
-      const scenePois =
-        scene.type === "opening" ? scene.pois :
-        undefined;
-      if (!scenePois?.length) continue;
-
-      const resolved: typeof scenePois = [];
-      for (const poi of scenePois) {
-        if (poi.lat != null && poi.lng != null) {
-          resolved.push(poi);
-          continue;
-        }
-        try {
-          const q = encodeURIComponent(poi.name);
-          const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${props.mapboxToken}&proximity=${lng},${lat}&language=zh-TW&country=TW&limit=1`;
-          const res = await fetch(url);
-          const data = await res.json();
-          if (data.features?.[0]) {
-            const [poiLng, poiLat] = data.features[0].center as [number, number];
-            resolved.push({ ...poi, lat: poiLat, lng: poiLng });
-          }
-        } catch {
-          // skip failed POI
-        }
-      }
-      if (scene.type === "opening") {
-        updatedScenes[i] = { ...scene, pois: resolved };
-      }
-    }
-  }
-
+  // POI coordinates are resolved server-side by orchestrator (Google Places API)
   return {
-    durationInFrames: calcTotalFrames(updatedScenes),
-    props: { ...props, scenes: updatedScenes, lat, lng },
+    durationInFrames: calcTotalFrames(props.scenes),
+    props: { ...props, lat, lng },
   };
 };
 
