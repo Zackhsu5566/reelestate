@@ -281,7 +281,7 @@ async def step_render(state: JobState) -> None:
     logger.info(f"[{state.job_id}] step_render")
     render_input = await _build_render_input(state)
     opening = next((s for s in render_input["scenes"] if s["type"] == "opening"), None)
-    print(f"[{state.job_id}] opening scene: {opening}")
+    logger.info(f"[{state.job_id}] opening scene: {opening}")
 
     if state.preview_render_job_id:
         # Crash recovery
@@ -302,7 +302,7 @@ async def step_render(state: JobState) -> None:
             await line_bot.send_gate_preview(
                 chat_id=state.line_user_id,
                 job_id=state.job_id,
-                video_url=url,
+                video_url=state.preview_url,
                 thumbnail_url=state.thumbnail_url,
             )
         except Exception as e:
@@ -393,7 +393,7 @@ async def _build_render_input(state: JobState) -> dict:
         scenes.append({
             "type": "clip",
             "src": exterior_task.output_url,
-            "label": "",
+            "label": "外觀",
             "durationInFrames": CLIP_FRAMES,
         })
 
