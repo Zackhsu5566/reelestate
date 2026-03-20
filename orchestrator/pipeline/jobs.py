@@ -18,7 +18,7 @@ from orchestrator.pipeline.state import store
 from orchestrator.services.agent import agent_service
 from orchestrator.services.r2 import r2_service
 from orchestrator.services.render import render_service
-from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, PROMPT_ROTATE
+from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, PROMPT_PUSH_IN, PROMPT_ROTATE
 from orchestrator.line.bot import line_bot
 
 logger = logging.getLogger(__name__)
@@ -261,11 +261,15 @@ async def step_generate(state: JobState) -> None:
         )
         has_staging = staging_prompt is not None
 
+        # 客廳/廚房用 Push In，其餘用 Rotate
+        camera_prompt = (
+            PROMPT_PUSH_IN if space.name in ("客廳", "廚房") else PROMPT_ROTATE
+        )
         for idx, photo_url in enumerate(photos):
             is_last = (idx == len(photos) - 1)
             needs_reverse = has_staging and is_last
             tasks.append(_task_kling_video(
-                state, space.name, idx, photo_url, PROMPT_ROTATE,
+                state, space.name, idx, photo_url, camera_prompt,
                 needs_reverse=needs_reverse,
             ))
 
