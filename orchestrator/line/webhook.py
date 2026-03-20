@@ -76,6 +76,11 @@ async def _handle_text(user_id: str, text: str) -> None:
         await line_bot.send_welcome(user_id)
         return
 
+    # 使用說明（任何狀態）
+    if text == "使用說明":
+        await line_bot.send_welcome(user_id)
+        return
+
     state = await conv_manager.get(user_id)
     current = state["state"]
 
