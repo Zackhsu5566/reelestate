@@ -684,4 +684,10 @@ async def _build_render_input(state: JobState) -> dict:
     if prop.line:
         render_input["line"] = prop.line
 
+    # Audio
+    if settings.bgm_url:
+        render_input["bgm"] = settings.bgm_url
+    if state.narration_url:
+        render_input["narration"] = state.narration_url
+
     return render_input
