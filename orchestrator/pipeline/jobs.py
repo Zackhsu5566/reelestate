@@ -15,6 +15,7 @@ from orchestrator.config import settings
 from orchestrator.models import AssetTask, JobState, JobStatus, SpaceInfo, SpaceInput
 from orchestrator.staging_prompts import get_staging_prompt
 from orchestrator.pipeline.state import store
+from orchestrator.stores.user import UserStore
 from orchestrator.services.agent import agent_service
 from orchestrator.services.r2 import r2_service
 from orchestrator.services.render import render_service
@@ -98,6 +99,19 @@ async def step_analyze(state: JobState) -> None:
             logger.warning(f"[{state.job_id}] Agent warnings: {result.meta.warnings}")
         if result.meta.missing_fields:
             logger.warning(f"[{state.job_id}] Agent missing fields: {result.meta.missing_fields}")
+
+    # Profile injection — fallback to user profile for contact fields
+    if state.line_user_id:
+        user_store = UserStore(store.r)
+        profile = await user_store.get(state.line_user_id)
+        if profile and state.agent_result:
+            prop = state.agent_result.property
+            if prop:
+                prop.agent_name = prop.agent_name or profile.name
+                prop.company = prop.company or profile.company
+                prop.phone = prop.phone or profile.phone
+                prop.line = prop.line or profile.line_id
+                await store.save(state)
 
 
 # ── Step 2: Parallel Asset Generation ──
