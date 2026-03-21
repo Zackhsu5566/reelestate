@@ -29,6 +29,7 @@ export const ClipScene: React.FC<Props> = ({ src, label, isFirstInGroup = true }
       <Video
         src={staticFile(src)}
         style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        playbackRate={1.25}
         muted
       />
 
