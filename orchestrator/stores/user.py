@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 _CONSUME_QUOTA_LUA = """
 local key = KEYS[1]
-local usage = tonumber(redis.call('HGET', key, 'usage') or '0')
-local quota = tonumber(redis.call('HGET', key, 'quota') or '3')
+local usage = tonumber(redis.call('HGET', key, 'usage')) or 0
+local quota = tonumber(redis.call('HGET', key, 'quota')) or 3
 if usage < quota then
     redis.call('HINCRBY', key, 'usage', 1)
     return 1
