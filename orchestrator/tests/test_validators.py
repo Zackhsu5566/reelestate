@@ -1,4 +1,3 @@
-import pytest
 from orchestrator.line.validators import validate_name, validate_company, validate_phone, validate_line_id
 
 

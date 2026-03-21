@@ -5,7 +5,7 @@ import re
 _NAME_PATTERN = re.compile(r"^[\u4e00-\u9fff\u3400-\u4dbfa-zA-Z\s·]+$")
 _COMPANY_PATTERN = re.compile(r"^[\u4e00-\u9fff\u3400-\u4dbfa-zA-Z\s·（）()\-、]+$")
 _PHONE_PATTERN = re.compile(r"^09\d{8}$")
-_LINE_ID_PATTERN = re.compile(r"^[a-z0-9._\-]+$")
+_LINE_ID_PATTERN = re.compile(r"^[a-z0-9._-]+$")
 
 _SKIP_KEYWORDS = {"跳過", "略過"}
 
