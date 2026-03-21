@@ -372,6 +372,165 @@ class LineBot:
             ]
         await self._push(chat_id, messages)
 
+    # ── Registration & job options ──
+
+    async def send_registration_name_prompt(self, chat_id: str) -> None:
+        await self.send_message(
+            chat_id,
+            "歡迎使用 ReelEstate！🏠\n請先輸入您的姓名：",
+        )
+
+    async def send_registration_company_prompt(self, chat_id: str) -> None:
+        await self.send_message(chat_id, "請輸入您的公司名稱：")
+
+    async def send_registration_phone_prompt(self, chat_id: str) -> None:
+        await self.send_message(chat_id, "請輸入您的聯絡電話：")
+
+    async def send_registration_line_id_prompt(self, chat_id: str) -> None:
+        """Send LINE ID prompt with Quick Reply skip button."""
+        await self._push(chat_id, [{
+            "type": "text",
+            "text": "請輸入您的 LINE ID（選填，將顯示於影片中供客戶聯繫）",
+            "quickReply": {
+                "items": [{
+                    "type": "action",
+                    "action": {
+                        "type": "postback",
+                        "label": "跳過",
+                        "data": "skip_line_id",
+                        "displayText": "跳過",
+                    },
+                }],
+            },
+        }])
+
+    async def send_registration_complete(self, chat_id: str) -> None:
+        await self.send_message(
+            chat_id,
+            "註冊完成！您可以開始傳照片生成影片了 🎬\n\n"
+            "直接傳送房屋照片即可開始。",
+        )
+
+    async def send_style_choice(self, chat_id: str) -> None:
+        """Send style Quick Reply buttons."""
+        styles = [
+            ("日式無印", "style:japanese_muji"),
+            ("北歐", "style:scandinavian"),
+            ("現代極簡", "style:modern_minimalist"),
+            ("現代奢華", "style:modern_luxury"),
+            ("溫暖自然", "style:warm_natural"),
+        ]
+        items = [
+            {
+                "type": "action",
+                "action": {
+                    "type": "postback",
+                    "label": label,
+                    "data": data,
+                    "displayText": label,
+                },
+            }
+            for label, data in styles
+        ]
+        await self._push(chat_id, [{
+            "type": "text",
+            "text": "請選擇虛擬裝潢風格：",
+            "quickReply": {"items": items},
+        }])
+
+    async def send_narration_choice(self, chat_id: str) -> None:
+        """Send narration opt-in Quick Reply."""
+        items = [
+            {
+                "type": "action",
+                "action": {
+                    "type": "postback",
+                    "label": "是",
+                    "data": "narration:yes",
+                    "displayText": "是",
+                },
+            },
+            {
+                "type": "action",
+                "action": {
+                    "type": "postback",
+                    "label": "否",
+                    "data": "narration:no",
+                    "displayText": "否",
+                },
+            },
+        ]
+        await self._push(chat_id, [{
+            "type": "text",
+            "text": "要加入 AI 旁白嗎？",
+            "quickReply": {"items": items},
+        }])
+
+    async def send_quota_exceeded(self, chat_id: str, usage: int, quota: int) -> None:
+        await self.send_message(
+            chat_id,
+            f"您已使用 {usage}/{quota} 支影片額度，目前無法再生成。",
+        )
+
+    async def send_validation_error(self, chat_id: str, message: str) -> None:
+        """Show a field-specific validation failure message during registration."""
+        await self.send_message(chat_id, message)
+
+    async def send_text_only_reminder(self, chat_id: str, reprompt: str) -> None:
+        """Remind user that only text is accepted in the current state, then re-prompt."""
+        await self.send_message(chat_id, f"請輸入文字訊息喔！\n{reprompt}")
+
+    async def send_gate_narration(
+        self, chat_id: str, job_id: str, narration_text: str,
+    ) -> None:
+        """Send narration preview with approve/edit/reject buttons."""
+        import re
+        display_text = re.sub(r"^\[.+?\]\s*$", "", narration_text, flags=re.MULTILINE)
+        display_text = re.sub(r"<#[\d.]+#>", "", display_text).strip()
+
+        actions = [
+            {
+                "type": "postback",
+                "label": "✅ 通過",
+                "data": f"narration_gate:{job_id}:approved",
+            },
+            {
+                "type": "postback",
+                "label": "✏️ 修改講稿",
+                "data": f"narration_gate:{job_id}:edit",
+            },
+            {
+                "type": "postback",
+                "label": "❌ 不要旁白",
+                "data": f"narration_gate:{job_id}:rejected",
+            },
+        ]
+        bubble = {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {"type": "text", "text": "📝 AI 生成的旁白講稿", "weight": "bold", "size": "lg"},
+                    {"type": "separator", "margin": "md"},
+                    {"type": "text", "text": display_text, "wrap": True,
+                     "size": "sm", "margin": "md"},
+                ],
+            },
+            "footer": {
+                "type": "box",
+                "layout": "horizontal",
+                "spacing": "sm",
+                "contents": [
+                    {"type": "button", "action": a, "style": "primary"
+                     if a["label"].startswith("✅") else "secondary",
+                     "height": "sm"}
+                    for a in actions
+                ],
+            },
+        }
+        await self._push(chat_id, [{"type": "flex", "altText": "旁白講稿確認", "contents": bubble}])
+
 
 # Module-level singleton (initialized with empty token; config applied at startup)
 line_bot = LineBot()

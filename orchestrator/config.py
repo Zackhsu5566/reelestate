@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     line_channel_access_token: str = ""
     line_channel_secret: str = ""
 
+    # MiniMax TTS
+    minimax_api_key: str = ""
+    minimax_group_id: str = ""
+    minimax_poll_interval: float = 3.0
+    minimax_poll_timeout: float = 120.0
+    # BGM
+    bgm_url: str = ""
+
     # General
     max_retries: int = 3
 

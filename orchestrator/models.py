@@ -119,6 +119,13 @@ class JobState(BaseModel):
     thumbnail_url: str | None = None
     final_url: str | None = None
 
+    # TTS
+    narration_enabled: bool = False
+    narration_gate_status: str | None = None
+    narration_text: str | None = None
+    narration_task_id: str | None = None
+    narration_url: str | None = None
+
     # Errors
     errors: list[str] = []
 
@@ -127,6 +134,21 @@ class SpaceInput(BaseModel):
     label: str
     photos: list[str]  # R2 URLs
     is_small_space: bool = False  # Set by _preprocess_spaces when label ends with 's'
+
+
+# ── User Profile ──
+
+
+class UserProfile(BaseModel):
+    line_user_id: str
+    name: str
+    company: str
+    phone: str
+    line_id: str | None = None
+    plan: str = "premium"
+    quota: int = 3
+    usage: int = 0
+    created_at: str
 
 
 # ── API Request / Response ──
@@ -139,6 +161,7 @@ class CreateJobRequest(BaseModel):
     exterior_photo: str | None = None  # Building exterior photo URL
     staging_template: str | None = "japanese_muji"
     line_user_id: str = ""
+    narration_enabled: bool = False
 
 
 class GateCallbackRequest(BaseModel):

@@ -54,6 +54,7 @@ export type VideoInput = {
   agentName: string;
   scenes: SceneInput[];
   bgm?: string;
+  narration?: string;
   mapboxToken?: string;
   lat?: number;
   lng?: number;

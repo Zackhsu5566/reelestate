@@ -27,6 +27,7 @@ from orchestrator.config import settings
 from orchestrator.line.bot import line_bot
 from orchestrator.line.webhook import router as line_router
 from orchestrator.line.conversation import ConversationManager
+from orchestrator.stores.user import UserStore
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ async def lifespan(app: FastAPI):
     await line_bot.start()
     import orchestrator.line.webhook as line_wh
     line_wh.conv_manager = ConversationManager(store.r)
+    line_wh.user_store = UserStore(store.r)
 
     # Resume interrupted jobs
     active_ids = await store.get_active_job_ids()
