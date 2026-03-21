@@ -57,12 +57,23 @@ Narration gate 不使用 `JobStatus`（不像 preview gate），而是透過 **R
 2. 素材（Kling/staging/exterior）平行開始生成
 3. 用戶回應 LINE postback 時，webhook handler 直接寫 Redis key：
    - ✅ 通過 → `"approved"`
-   - ✏️ 修改 → `"edit:{新講稿文字}"`
+   - ✏️ 修改 → `"edit_pending"`（同時設 conv state 為 `editing_narration`）
    - ❌ 不要 → `"rejected"`
-4. `step_generate` 內有一個 async loop 輪詢此 Redis key（間隔 3s，超時 10min）
-5. 超時 → 視為 `"approved"`（自動通過）
+4. 若用戶選「修改」，進入 `editing_narration` conv state：
+   - 用戶輸入新講稿文字 → webhook 寫 Redis key `"edit:{新講稿文字}"` → conv state 回 `processing`
+   - 字數限制：不超過原始講稿長度的 1.5 倍，超過則提醒用戶縮短
+5. `step_generate` 內有一個 async loop 輪詢此 Redis key（間隔 3s，超時 10min）
+   - 讀到 `"pending"` / `"edit_pending"` → 繼續等待
+   - 讀到 `"approved"` → 用原始講稿跑 TTS
+   - 讀到 `"edit:{text}"` → 用新講稿跑 TTS
+   - 讀到 `"rejected"` → 跳過 TTS
+6. 超時 → 視為 `"approved"`（自動通過）
 
-**Crash recovery**：`JobState` 新增 `narration_gate_status` 欄位（`pending` | `approved` | `rejected` | `timeout`）。Pipeline 重啟後，若 `narration_gate_status` 已是 `approved`/`timeout` 且 TTS 尚未完成，直接跑 TTS；若為 `rejected`，跳過 TTS。
+**Crash recovery**：`JobState` 新增 `narration_gate_status` 欄位（`pending` | `approved` | `edit_pending` | `rejected` | `timeout`）及 `narration_task_id` 欄位。Pipeline 重啟後：
+- `narration_gate_status` 為 `approved`/`timeout` 且有 `narration_task_id` → 恢復 TTS 輪詢
+- `narration_gate_status` 為 `approved`/`timeout` 且無 `narration_task_id` → 重新跑 TTS
+- `narration_gate_status` 為 `rejected` → 跳過 TTS
+- `narration_gate_status` 為 `pending`/`edit_pending` → 恢復 Gate 輪詢
 
 ### Gate 與素材的協調
 
@@ -165,9 +176,21 @@ minimax_poll_timeout: float = 120.0  # TTS 通常幾秒完成，120s 足夠
 bgm_url: str = ""  # R2 URL，例如 https://assets.replowapp.com/audio/bgm-default.mp3
 ```
 
-### 錯誤處理
+### 錯誤處理（per-step）
 
-TTS 失敗 → log warning，`narration_url` 維持 `None`，pipeline 繼續（降級出片）。不 raise，不擋住 `step_generate`。
+| 步驟 | 失敗情境 | 處理 |
+|------|---------|------|
+| File upload | 413 / network error | Retry 1 次，失敗則降級 |
+| Create task | 400（bad text） | Log 原始文字，降級 |
+| Poll timeout | 超過 120s | 降級 |
+| Download audio | 空檔 / corrupt | 降級 |
+| R2 upload | Network error | Retry 1 次，失敗則降級 |
+
+所有降級 = log warning，`narration_url` 維持 `None`，pipeline 繼續（無旁白出片）。不 raise，不擋住 `step_generate`。
+
+### 並發控制
+
+使用 `asyncio.Semaphore(5)` 限制同時進行的 MiniMax API 呼叫，避免多 job 同時 hit rate limit。
 
 ---
 
@@ -186,12 +209,17 @@ export type VideoInput = {
 ### 4b. `ReelEstateVideo.tsx` — 加旁白音軌
 
 ```tsx
-{/* BGM — 有旁白時降低音量 */}
-{bgm && <Audio src={staticFile(bgm)} volume={narration ? 0.05 : 0.15} loop />}
+// 檔案頂部常數（方便調整）
+const BGM_VOLUME = 0.15;
+const BGM_VOLUME_WITH_NARRATION = 0.05;
+const NARRATION_VOLUME = 1.0;
 
-{/* 旁白 — 不 loop，播完就結束 */}
-{narration && <Audio src={staticFile(narration)} volume={1.0} />}
+// JSX
+{bgm && <Audio src={staticFile(bgm)} volume={narration ? BGM_VOLUME_WITH_NARRATION : BGM_VOLUME} loop />}
+{narration && <Audio src={staticFile(narration)} volume={NARRATION_VOLUME} />}
 ```
+
+> 注意：BGM `loop` 在影片結束時會被 Remotion 截斷（不需額外 fade-out）。音量值需實測調整，先用這組預設。
 
 ### 4c. `server/assets.ts` — 下載 narration
 
@@ -239,7 +267,7 @@ Bot: 📝 AI 生成的旁白講稿：
 ```
 
 - ✅ 通過 → 跑 TTS
-- ✏️ 修改講稿 → Bot 回「請輸入修改後的講稿：」→ 用戶回傳 → 更新 narration → 跑 TTS
+- ✏️ 修改講稿 → Bot 回「請輸入修改後的講稿：」→ conv state 轉為 `editing_narration` → 用戶回傳文字（≤ 原始長度 1.5 倍）→ 更新 narration → 跑 TTS
 - ❌ 不要旁白 → `narration_enabled = False`，跳過 TTS
 - ⏰ 10 分鐘無回應 → 自動通過，用原始講稿跑 TTS
 
@@ -260,8 +288,9 @@ Bot: 📝 AI 生成的旁白講稿：
 
 ```python
 narration_enabled: bool = False
-narration_gate_status: str | None = None  # pending | approved | rejected | timeout
+narration_gate_status: str | None = None  # pending | edit_pending | approved | rejected | timeout
 narration_text: str | None = None  # 最終講稿（可能經用戶編輯），TTS 用此文字
+narration_task_id: str | None = None  # MiniMax async task ID（crash recovery 用）
 narration_url: str | None = None  # TTS 輸出的 R2 URL
 ```
 
@@ -285,9 +314,9 @@ Narration gate 透過 Redis key 輪詢（見 Section 1），不使用現有 `GAT
 |------|------|
 | `orchestrator/services/minimax.py` | **新增** — MiniMax TTS service |
 | `orchestrator/config.py` | 新增 `minimax_api_key`, `minimax_group_id`, `minimax_poll_interval`, `minimax_poll_timeout`, `bgm_url` |
-| `orchestrator/models.py` | JobState 加 `narration_enabled`, `narration_gate_status`, `narration_text`, `narration_url`；CreateJobRequest 加 `narration_enabled` |
+| `orchestrator/models.py` | JobState 加 `narration_enabled`, `narration_gate_status`, `narration_text`, `narration_task_id`, `narration_url`；CreateJobRequest 加 `narration_enabled` |
 | `orchestrator/pipeline/jobs.py` | `step_generate` 加 TTS task + Gate Redis 輪詢邏輯；`_build_render_input` 加 narration + bgm |
-| `orchestrator/line/conversation.py` | 新增 `awaiting_narration_choice` 狀態 |
+| `orchestrator/line/conversation.py` | 新增 `awaiting_narration_choice` + `editing_narration` 狀態 |
 | `orchestrator/line/webhook.py` | 處理 narration gate postback → 寫 Redis key |
 | `orchestrator/line/bot.py` | 新增 `send_gate_narration()` |
 | `orchestrator/.env.example` | 確認 MINIMAX 環境變數 |
