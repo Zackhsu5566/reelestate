@@ -38,6 +38,14 @@ def _empty_state() -> dict:
         "spaces": [],
         "exterior_photo": None,
         "job_id": None,
+        # registration temp
+        "reg_name": None,
+        "reg_company": None,
+        "reg_phone": None,
+        # job options
+        "chosen_style": None,
+        "narration_enabled": None,
+        "raw_text": None,
     }
 
 
@@ -114,6 +122,50 @@ class ConversationManager:
     async def set_awaiting_feedback(self, user_id: str) -> None:
         state = await self.get(user_id)
         state["state"] = ConversationState.awaiting_feedback
+        await self._save(user_id, state)
+
+    async def start_registration(self, user_id: str) -> None:
+        state = _empty_state()
+        state["state"] = ConversationState.registering_name
+        await self._save(user_id, state)
+
+    async def set_reg_field(
+        self, user_id: str, field: str, value: str, next_state: ConversationState,
+    ) -> None:
+        state = await self.get(user_id)
+        state[field] = value
+        state["state"] = next_state
+        await self._save(user_id, state)
+
+    async def complete_registration(self, user_id: str) -> dict:
+        """Clear reg_* fields and return to idle. Returns the reg data."""
+        state = await self.get(user_id)
+        reg_data = {
+            "name": state["reg_name"],
+            "company": state["reg_company"],
+            "phone": state["reg_phone"],
+        }
+        state["reg_name"] = None
+        state["reg_company"] = None
+        state["reg_phone"] = None
+        state["state"] = ConversationState.idle
+        await self._save(user_id, state)
+        return reg_data
+
+    async def set_choosing_style(self, user_id: str) -> None:
+        state = await self.get(user_id)
+        state["state"] = ConversationState.choosing_style
+        await self._save(user_id, state)
+
+    async def set_chosen_style(self, user_id: str, style: str) -> None:
+        state = await self.get(user_id)
+        state["chosen_style"] = style
+        state["state"] = ConversationState.awaiting_narration_choice
+        await self._save(user_id, state)
+
+    async def set_narration_choice(self, user_id: str, enabled: bool) -> None:
+        state = await self.get(user_id)
+        state["narration_enabled"] = enabled
         await self._save(user_id, state)
 
     async def reset(self, user_id: str) -> None:

@@ -102,3 +102,66 @@ async def test_reset_clears_state(manager):
     state = await manager.get("U1234")
     assert state["state"] == ConversationState.idle
     assert state["spaces"] == []
+
+
+@pytest.mark.asyncio
+async def test_start_registration(manager):
+    await manager.start_registration("U999")
+    state = await manager.get("U999")
+    assert state["state"] == ConversationState.registering_name
+
+
+@pytest.mark.asyncio
+async def test_set_reg_name(manager):
+    await manager.start_registration("U999")
+    await manager.set_reg_field("U999", "reg_name", "王小明",
+                                 ConversationState.registering_company)
+    state = await manager.get("U999")
+    assert state["reg_name"] == "王小明"
+    assert state["state"] == ConversationState.registering_company
+
+
+@pytest.mark.asyncio
+async def test_complete_registration(manager):
+    await manager.start_registration("U999")
+    await manager.set_reg_field("U999", "reg_name", "Test",
+                                 ConversationState.registering_company)
+    await manager.set_reg_field("U999", "reg_company", "Co",
+                                 ConversationState.registering_phone)
+    await manager.set_reg_field("U999", "reg_phone", "0912345678",
+                                 ConversationState.registering_line_id)
+    reg_data = await manager.complete_registration("U999")
+    assert reg_data == {"name": "Test", "company": "Co", "phone": "0912345678"}
+    state = await manager.get("U999")
+    assert state["state"] == ConversationState.idle
+    assert state["reg_name"] is None
+    assert state["reg_company"] is None
+    assert state["reg_phone"] is None
+
+
+@pytest.mark.asyncio
+async def test_set_choosing_style(manager):
+    # 從 awaiting_info 狀態呼叫 set_choosing_style
+    await manager._save("U999", {"state": ConversationState.awaiting_info})
+    await manager.set_choosing_style("U999")
+    state = await manager.get("U999")
+    assert state["state"] == ConversationState.choosing_style
+
+
+@pytest.mark.asyncio
+async def test_set_chosen_style(manager):
+    await manager._save("U999", {"state": ConversationState.choosing_style,
+                                  "chosen_style": None})
+    await manager.set_chosen_style("U999", "japanese_muji")
+    state = await manager.get("U999")
+    assert state["chosen_style"] == "japanese_muji"
+    assert state["state"] == ConversationState.awaiting_narration_choice
+
+
+@pytest.mark.asyncio
+async def test_set_narration_choice(manager):
+    await manager._save("U999", {"state": ConversationState.awaiting_narration_choice,
+                                  "narration_enabled": None})
+    await manager.set_narration_choice("U999", True)
+    state = await manager.get("U999")
+    assert state["narration_enabled"] is True
