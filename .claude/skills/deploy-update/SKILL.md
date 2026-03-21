@@ -13,8 +13,8 @@ cd remotion && git push origin main
 
 # 2. SSH 進 VPS 更新
 ssh root@187.77.150.149 "
-  cd /opt/reelestate-remotion &&
-  git pull &&
+  cd /opt/reelestate && git pull &&
+  cd remotion &&
   docker build -t reelestate-remotion . &&
   docker stop reelestate-remotion &&
   docker rm reelestate-remotion &&
@@ -35,17 +35,29 @@ curl -sk https://187.77.150.149/health \
 
 ## Orchestrator 更新
 
-Orchestrator 尚未部署到 VPS（本地開發階段）。
-部署時步驟：
-1. 推送 Docker image 或直接 git pull
-2. `docker-compose up -d --build`
-3. 確認 Redis 連線正常
-4. 送測試 job 驗證 pipeline
+**VPS**: `187.77.150.149`，repo `/opt/reelestate`，docker compose 在 `orchestrator/`
+
+```bash
+# 1. push 到 GitHub
+git push origin master
+
+# 2. SSH 進 VPS 更新
+ssh root@187.77.150.149 "
+  cd /opt/reelestate &&
+  git pull &&
+  cd orchestrator &&
+  docker compose up -d --build
+"
+
+# 3. 驗證 container 正常啟動
+ssh root@187.77.150.149 "docker logs orchestrator-orchestrator-1 --tail 5"
+```
+
+> **注意**：VPS 上是 `docker compose`（plugin 版），不是 `docker-compose`。
 
 ## 部署前檢查清單
 
-- [ ] 本地 render 測試通過
 - [ ] 環境變數確認（不 hardcode secrets）
 - [ ] Dockerfile 沒有快取問題（必要時加 `--no-cache`）
-- [ ] 部署後立即測試 `/health` endpoint
+- [ ] 部署後確認 container 正常啟動（檢查 logs）
 - [ ] container 確認 `--restart unless-stopped`

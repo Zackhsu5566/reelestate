@@ -57,3 +57,10 @@ remotion/public/
 | `debug-job` | 偵錯失敗的 pipeline job |
 
 使用前讀取對應 skill 檔案：`.claude/skills/<name>/SKILL.md`
+
+Code Review
+
+所有你寫的程式碼都會經過 Codex 二次審查（code review）
+因此寫 code 時要注意可讀性和可維護性，確保邏輯清晰、命名明確
+每次完成修改後，簡要列出你改了什麼、為什麼這樣改，方便 review 時快速理解
+

@@ -24,3 +24,6 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# Generated assets
+scripts/rich_menu.png
