@@ -18,10 +18,10 @@ const { fontFamily } = loadFont("normal", {
 const MAPBOX_STYLE_ID = "beingzackhsu/cmmrh4sis008501rndfa72u92";
 
 // Exported for OpeningScene timing
-export const FLY_DURATION_FRAMES = 120;  // 4s at 30fps
-export const POI_START_FRAME = 150;      // POIs appear at 5s
+export const FLY_DURATION_FRAMES = 120; // 4s at 30fps
+export const POI_START_FRAME = 150; // POIs appear at 5s
 
-const POI_STAGGER = 25;    // ~0.83s between each POI
+const POI_STAGGER = 45; // ~1.5s between each POI
 const POI_ANIM_FRAMES = 15; // ~0.5s animation duration
 
 const CATEGORY_COLORS: Record<POI["category"], string> = {
@@ -46,13 +46,18 @@ function cameraAtFrame(frame: number) {
   const t = Math.min(frame / FLY_DURATION_FRAMES, 1);
   const p = Easing.out(Easing.cubic)(t);
   return {
-    zoom:    interpolate(p, [0, 1], [10, 13]),
-    pitch:   interpolate(p, [0, 1], [0, 30]),
+    zoom: interpolate(p, [0, 1], [10, 13]),
+    pitch: interpolate(p, [0, 1], [0, 30]),
     bearing: interpolate(p, [0, 1], [0, 0]),
   };
 }
 
-export const MapboxFlyIn: React.FC<Props> = ({ lat, lng, token, pois = [] }) => {
+export const MapboxFlyIn: React.FC<Props> = ({
+  lat,
+  lng,
+  token,
+  pois = [],
+}) => {
   const frame = useCurrentFrame();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -92,7 +97,9 @@ export const MapboxFlyIn: React.FC<Props> = ({ lat, lng, token, pois = [] }) => 
       if (style?.layers) {
         for (const layer of style.layers) {
           if (layer.type === ("model" as unknown as mapboxgl.Layer["type"])) {
-            try { map.removeLayer(layer.id); } catch {}
+            try {
+              map.removeLayer(layer.id);
+            } catch {}
           }
         }
       }
@@ -150,11 +157,16 @@ export const MapboxFlyIn: React.FC<Props> = ({ lat, lng, token, pois = [] }) => 
       {/* POI markers overlay */}
       {screenPois.map((poi, i) => {
         const delay = POI_START_FRAME + i * POI_STAGGER;
-        const progress = interpolate(frame, [delay, delay + POI_ANIM_FRAMES], [0, 1], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-          easing: Easing.out(Easing.cubic),
-        });
+        const progress = interpolate(
+          frame,
+          [delay, delay + POI_ANIM_FRAMES],
+          [0, 1],
+          {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+            easing: Easing.out(Easing.cubic),
+          },
+        );
 
         const scale = interpolate(progress, [0, 1], [0.3, 1]);
         const color = CATEGORY_COLORS[poi.category] || CATEGORY_COLORS.other;
@@ -190,10 +202,24 @@ export const MapboxFlyIn: React.FC<Props> = ({ lat, lng, token, pois = [] }) => 
                 border: `2px solid ${color}`,
               }}
             >
-              <div style={{ color: "white", fontSize: 24, fontWeight: 700, whiteSpace: "nowrap" }}>
+              <div
+                style={{
+                  color: "white",
+                  fontSize: 24,
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {poi.name}
               </div>
-              <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 18, fontWeight: 400, whiteSpace: "nowrap" }}>
+              <div
+                style={{
+                  color: "rgba(255,255,255,0.7)",
+                  fontSize: 18,
+                  fontWeight: 400,
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {poi.distance}
               </div>
             </div>
