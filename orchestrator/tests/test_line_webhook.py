@@ -35,27 +35,31 @@ def mock_conv_manager():
 
 @pytest.fixture
 def mock_user_store():
-    """User store mock that returns a non-None profile by default."""
+    """User store mock that returns a registered user within quota by default."""
+    profile = MagicMock()
+    profile.usage = 0
+    profile.quota = 3
     m = AsyncMock()
-    m.get = AsyncMock(return_value=MagicMock())  # non-None = registered user
+    m.get = AsyncMock(return_value=profile)
     return m
 
 
 @pytest.mark.asyncio
-async def test_webhook_image_event(test_app, mock_conv_manager):
+async def test_webhook_image_event(test_app, mock_conv_manager, mock_user_store):
     """n8n forwards image event with photo_url — first photo triggers send_photo_started."""
     async with AsyncClient(transport=httpx.ASGITransport(app=test_app), base_url="http://test") as client:
         with patch("orchestrator.line.webhook.conv_manager", mock_conv_manager):
-            with patch("orchestrator.line.webhook.line_bot") as mock_bot:
-                mock_bot.send_photo_started = AsyncMock()
-                resp = await client.post("/webhook/line", json={
-                    "events": [{
-                        "type": "message",
-                        "message": {"type": "image"},
-                        "source": {"userId": "U1234"},
-                        "photo_url": "https://r2.example.com/photo1.jpg",
-                    }]
-                })
+            with patch("orchestrator.line.webhook.user_store", mock_user_store):
+                with patch("orchestrator.line.webhook.line_bot") as mock_bot:
+                    mock_bot.send_photo_started = AsyncMock()
+                    resp = await client.post("/webhook/line", json={
+                        "events": [{
+                            "type": "message",
+                            "message": {"type": "image"},
+                            "source": {"userId": "U1234"},
+                            "photo_url": "https://r2.example.com/photo1.jpg",
+                        }]
+                    })
     assert resp.status_code == 200
     mock_conv_manager.add_photo.assert_called_once_with("U1234", "https://r2.example.com/photo1.jpg")
     mock_bot.send_photo_started.assert_called_once_with("U1234")

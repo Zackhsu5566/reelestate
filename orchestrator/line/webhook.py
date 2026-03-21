@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException
 
 from orchestrator.line.bot import line_bot
 from orchestrator.line.conversation import ConversationState
+from orchestrator.models import UserProfile
 from orchestrator.stores.user import UserStore
 from orchestrator.line.validators import (
     validate_name, validate_company, validate_phone, validate_line_id,
@@ -61,6 +63,13 @@ async def _handle_image(user_id: str, event: dict) -> None:
     if reprompt:
         await line_bot.send_text_only_reminder(user_id, reprompt)
         return
+
+    # 提前攔截配額：idle 狀態才阻擋（collecting_photos 已在途中不中斷）
+    if current == ConversationState.idle:
+        profile_check = await user_store.get(user_id)
+        if profile_check and profile_check.usage >= profile_check.quota:
+            await line_bot.send_quota_exceeded(user_id, profile_check.usage, profile_check.quota)
+            return
 
     if current == ConversationState.processing:
         await line_bot.send_message(user_id, "⏳ 影片製作中，完成後會通知你！")
@@ -162,8 +171,6 @@ async def _handle_registration_line_id(
         )
     else:
         # New user — create full profile
-        from datetime import datetime, timezone
-        from orchestrator.models import UserProfile
         profile = UserProfile(
             line_user_id=user_id,
             name=conv_state["reg_name"],
@@ -205,6 +212,8 @@ async def _handle_text(user_id: str, text: str) -> None:
         if profile:
             await conv_manager.start_registration(user_id)
             await line_bot.send_registration_name_prompt(user_id)
+        else:
+            await line_bot.send_message(user_id, "您尚未完成註冊，請先完成註冊後再修改資料。")
         return
 
     # Profile 檢查
@@ -224,6 +233,16 @@ async def _handle_text(user_id: str, text: str) -> None:
     if profile is None:
         await conv_manager.start_registration(user_id)
         await line_bot.send_registration_name_prompt(user_id)
+        return
+
+    # ── choosing_style ──
+    if current == ConversationState.choosing_style:
+        await line_bot.send_style_choice(user_id)
+        return
+
+    # ── awaiting_narration_choice ──
+    if current == ConversationState.awaiting_narration_choice:
+        await line_bot.send_narration_choice(user_id)
         return
 
     # ── collecting_photos ──
@@ -281,10 +300,7 @@ async def _handle_text(user_id: str, text: str) -> None:
 
     # ── awaiting_info ──
     if current == ConversationState.awaiting_info:
-        # 暫存 raw_text 到 conv state，進入風格選擇
-        state["raw_text"] = text
-        await conv_manager._save(user_id, state)
-        await conv_manager.set_choosing_style(user_id)
+        await conv_manager.set_awaiting_style(user_id, text)
         await line_bot.send_style_choice(user_id)
         return
 
@@ -370,17 +386,18 @@ async def _handle_postback(user_id: str, data: str) -> None:
         enabled = data == "narration:yes"
         await conv_manager.set_narration_choice(user_id, enabled)
         # 配額檢查 + 建立 job
-        profile = await user_store.get(user_id)
         state = await conv_manager.get(user_id)
 
         if not await user_store.try_consume_quota(user_id):
-            updated_profile = await user_store.get(user_id)
+            quota_profile = await user_store.get(user_id)
             await line_bot.send_quota_exceeded(
-                user_id, updated_profile.usage, updated_profile.quota,
+                user_id, quota_profile.usage, quota_profile.quota,
             )
             await conv_manager.reset(user_id)
             return
 
+        # fetch fresh profile after successful quota consumption
+        profile = await user_store.get(user_id)
         await _create_job(user_id, state.get("raw_text", ""), state, profile)
         return
 

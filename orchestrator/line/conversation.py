@@ -157,6 +157,13 @@ class ConversationManager:
         state["state"] = ConversationState.choosing_style
         await self._save(user_id, state)
 
+    async def set_awaiting_style(self, user_id: str, raw_text: str) -> None:
+        """Save raw_text and transition to choosing_style in one operation."""
+        state = await self.get(user_id)
+        state["raw_text"] = raw_text
+        state["state"] = ConversationState.choosing_style
+        await self._save(user_id, state)
+
     async def set_chosen_style(self, user_id: str, style: str) -> None:
         state = await self.get(user_id)
         state["chosen_style"] = style
