@@ -75,24 +75,26 @@ async def try_consume_quota(self, line_user_id: str) -> bool:
 
 ### Conversation State Machine
 
-新增 4 個狀態：
+新增 5 個狀態：
 
 ```
-新增（註冊）：
-  registering_name → registering_company → registering_phone → idle
+新增（註冊，4 步）：
+  registering_name → registering_company → registering_phone → registering_line_id → idle
 
 新增（風格選擇）：
   choosing_style（在 awaiting_info 之後）
 
 完整流程（新用戶）：
   首次訊息 → registering_name → registering_company → registering_phone
-  → idle → collecting_photos → awaiting_label → awaiting_info
+  → registering_line_id → idle → collecting_photos → awaiting_label → awaiting_info
   → choosing_style → 配額檢查 → processing → awaiting_feedback
 
 完整流程（既有用戶）：
   idle → collecting_photos → awaiting_label → awaiting_info
   → choosing_style → 配額檢查 → processing → awaiting_feedback
 ```
+
+**全域指令擴充**：新增「重新註冊」指令，允許既有用戶重新填寫個人資訊（刪除現有 profile，重新進入 `registering_name`）。完整全域指令清單：「重新開始」「取消」「使用說明」「重新註冊」。
 
 ### Conv State 暫存欄位
 
@@ -106,30 +108,54 @@ def _empty_state() -> dict:
         "spaces": [],
         "exterior_photo": None,
         "job_id": None,
-        # 新增
-        "reg_name": None,       # 註冊中暫存姓名
-        "reg_company": None,    # 註冊中暫存公司
-        "chosen_style": None,   # 風格選擇結果
+        # 新增 — 註冊暫存
+        "reg_name": None,
+        "reg_company": None,
+        "reg_phone": None,
+        # 新增 — 風格選擇
+        "chosen_style": None,
     }
 ```
 
-註冊完成時，`reg_name` / `reg_company` 清除（資料已寫入 `user:` Hash）。Conv state 的 24 小時 TTL 自然處理中斷的註冊——過期後重新開始。
+註冊完成時，`reg_*` 欄位清除（資料已寫入 `user:` Hash）。Conv state 的 24 小時 TTL 自然處理中斷的註冊——過期後重新開始。
 
 ### Registration Flow
 
 ```
 Bot: 「歡迎使用 ReelEstate！請先輸入您的姓名」
-用戶: 「王小明」          → 存入 conv.reg_name，轉 registering_company
+用戶: 「王小明」          → conv.reg_name，轉 registering_company
 Bot: 「請輸入您的公司名稱」
-用戶: 「信義房屋」        → 存入 conv.reg_company，轉 registering_phone
+用戶: 「信義房屋」        → conv.reg_company，轉 registering_phone
 Bot: 「請輸入您的聯絡電話」
-用戶: 「0912345678」      → 驗證格式，建立 UserProfile，轉 idle
-Bot: 「註冊完成！您可以開始傳照片生成影片了」
+用戶: 「0912345678」      → 驗證格式，conv.reg_phone，轉 registering_line_id
+Bot: 「請輸入您的 LINE ID（選填，將顯示於影片中供客戶聯繫）」 [跳過]
+用戶: 「wang.ming」       → 驗證格式，建立 UserProfile，轉 idle
+Bot: 「註冊完成！您可以開始傳照片生成影片了 🎬」
 ```
 
-三個欄位皆必填，不可跳過。電話號碼需通過基本格式驗證（台灣手機 `09` 開頭、10 位數字）。
+### Registration Validation Rules
 
-全域指令（「重新開始」「取消」「使用說明」）在 registering 狀態下同樣有效，會清除暫存資料、重置回初始狀態（不建立 profile），下次傳訊息會重新進入註冊。
+**Non-text message handling**：所有 `registering_*` 狀態下收到非文字訊息（sticker、圖片、音訊、位置）時，回覆「請輸入文字訊息喔！」+ 當前步驟提示，不改變狀態。
+
+| Field | Required | Max Length | Pattern | Normalize | Reject Message |
+|-------|----------|-----------|---------|-----------|----------------|
+| name | Yes | 20 | 中英文、空格、`·` | trim | 「請輸入 1-20 字的姓名」 |
+| company | Yes | 30 | 上述 + `（）()-、` | trim | 「請輸入 1-30 字的公司名稱」 |
+| phone | Yes | 10 (stored) | `09\d{8}` | strip `-` and spaces | 「請輸入正確的手機號碼（例如 0912345678）」 |
+| line_id | No | 20 | `[a-z0-9._-]+` | lowercase, trim | 「LINE ID 格式不正確，請重新輸入或點選跳過」 |
+
+- **name**：1–20 字元，允許中文、英文、空格、`·`（如「乃木·希典」）。去除前後空白。
+- **company**：1–30 字元，name 字集 + 常見標點 `（）()-、`。去除前後空白。
+- **phone**：先 strip `-` 和空格再驗證，所以 `0912-345-678` 和 `0912 345 678` 都可接受。儲存正規化後的 10 位數字。
+- **line_id**：1–20 字元，小寫英數字 + `.` `_` `-`。接受「跳過」或「略過」關鍵字（也可用 Quick Reply `[跳過]` 按鈕）設為 `None`。
+
+### Duplicate Registration
+
+- 正常流程：`UserStore.get()` 回傳 profile → 跳過註冊 → idle
+- 重新註冊：用戶輸入「重新註冊」→ 刪除現有 profile → 重新進入 `registering_name`
+- 「重新註冊」為全域指令，與「重新開始」「取消」「使用說明」並列
+
+全域指令在 `registering_*` 狀態下同樣有效（「重新開始」「取消」清除暫存、重置狀態、不建立 profile）。
 
 ### Style Selection Flow
 
@@ -190,7 +216,7 @@ job_state = JobState(
 
 | 檔案 | 變更 |
 |------|------|
-| `orchestrator/models.py` | 新增 `UserProfile`、`ConversationState` 加 `registering_*` + `choosing_style` |
+| `orchestrator/models.py` | 新增 `UserProfile`、`ConversationState` 加 `registering_name/company/phone/line_id` + `choosing_style` |
 | `orchestrator/stores/__init__.py` | 新增 module |
 | `orchestrator/stores/user.py` | 新增 `UserStore` class |
 | `orchestrator/line/conversation.py` | `_empty_state()` 加暫存欄位、處理 `registering_*` 和 `choosing_style` 狀態邏輯 |
