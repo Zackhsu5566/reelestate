@@ -76,16 +76,17 @@ class MiniMaxService:
         self, session: aiohttp.ClientSession, text: str
     ) -> str | None:
         url = f"{_BASE_URL}/files/upload"
-        form = aiohttp.FormData()
-        form.add_field(
-            "file",
-            text.encode("utf-8"),
-            filename="narration.txt",
-            content_type="text/plain",
-        )
-        form.add_field("purpose", "file-extract")
 
         for attempt in range(2):
+            # FormData must be re-created per attempt (consumed after first post)
+            form = aiohttp.FormData()
+            form.add_field(
+                "file",
+                text.encode("utf-8"),
+                filename="narration.txt",
+                content_type="text/plain",
+            )
+            form.add_field("purpose", "file-extract")
             try:
                 resp = await session.post(url, data=form)
                 if resp.status == 200:

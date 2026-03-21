@@ -13,8 +13,7 @@ def service():
     )
 
 
-@pytest.mark.asyncio
-async def test_strip_section_markers(service):
+def test_strip_section_markers(service):
     text = "[OPENING]\n信義區\n<#1.0#>\n[客廳]\n大落地窗"
     result = service._strip_markers(text)
     assert "[OPENING]" not in result
