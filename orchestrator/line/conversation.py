@@ -19,6 +19,16 @@ class ConversationState(StrEnum):
     awaiting_info = "awaiting_info"
     processing = "processing"
     awaiting_feedback = "awaiting_feedback"
+    # new — registration
+    registering_name = "registering_name"
+    registering_company = "registering_company"
+    registering_phone = "registering_phone"
+    registering_line_id = "registering_line_id"
+    # new — job options
+    choosing_style = "choosing_style"
+    awaiting_narration_choice = "awaiting_narration_choice"
+    # new — narration edit (during processing)
+    editing_narration = "editing_narration"
 
 
 def _empty_state() -> dict:
