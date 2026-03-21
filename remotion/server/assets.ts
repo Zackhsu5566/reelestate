@@ -146,6 +146,19 @@ export async function downloadAssets(
     );
   }
 
+  // Narration
+  let localNarration = input.narration;
+  if (input.narration && isUrl(input.narration)) {
+    const ext = extFromUrl(input.narration);
+    localNarration = `${jobDir}/audio/narration${ext}`;
+    downloads.push(
+      downloadWithRetry(input.narration, path.join(PUBLIC_DIR, localNarration)).then((size) => ({
+        label: "narration",
+        size,
+      })),
+    );
+  }
+
   // Execute all downloads in parallel
   log(jobId, `downloading ${downloads.length} assets...`);
   const results = await Promise.all(downloads);
@@ -157,6 +170,7 @@ export async function downloadAssets(
     ...input,
     scenes: mappedScenes,
     bgm: localBgm,
+    narration: localNarration,
   };
 }
 

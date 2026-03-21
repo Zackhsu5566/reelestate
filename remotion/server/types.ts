@@ -59,6 +59,7 @@ export interface RenderInput {
   agentName: string;
   scenes: SceneInput[];
   bgm?: string; // URL
+  narration?: string; // URL
   // Map / OpeningScene fields (optional)
   community?: string;
   propertyType?: string;

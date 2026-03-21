@@ -15,6 +15,10 @@ export const WIPE_FRAMES = 28;       // ~0.93s wipe to staging
 export const STAGING_FRAMES = 90;    // 3s
 export const HOLD_FRAMES = 35;       // ~1.17s freeze before staging wipe (accounts for transition overlap)
 
+const BGM_VOLUME = 0.15;
+const BGM_VOLUME_WITH_NARRATION = 0.05;
+const NARRATION_VOLUME = 1.0;
+
 /** 計算兩個相鄰 scene 之間是否需要轉場（不含 stagingImage 的特殊轉場） */
 function needsFadeBetween(curr: SceneInput, next: SceneInput): boolean {
   // 同空間 clip → 無轉場（直接接）
@@ -68,7 +72,7 @@ const wipeTiming = linearTiming({ durationInFrames: WIPE_FRAMES });
 export const ReelEstateVideo: React.FC<VideoInput> = (props) => {
   const {
     title, location, address, size, layout, floor,
-    price, contact, line, agentName, scenes, bgm,
+    price, contact, line, agentName, scenes, bgm, narration,
   } = props;
 
   const seriesItems: React.ReactNode[] = [];
@@ -185,8 +189,10 @@ export const ReelEstateVideo: React.FC<VideoInput> = (props) => {
       {/* Scenes */}
       <TransitionSeries>{seriesItems}</TransitionSeries>
 
-      {/* Background music — low volume, loops */}
-      {bgm && <Audio src={staticFile(bgm)} volume={0.15} loop />}
+      {/* Background music — low volume, loops; ducked further when narration is present */}
+      {bgm && <Audio src={staticFile(bgm)} volume={narration ? BGM_VOLUME_WITH_NARRATION : BGM_VOLUME} loop />}
+      {/* Narration voice-over — full volume, no loop */}
+      {narration && <Audio src={staticFile(narration)} volume={NARRATION_VOLUME} />}
     </AbsoluteFill>
   );
 };
