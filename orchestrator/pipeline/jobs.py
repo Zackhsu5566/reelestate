@@ -6,6 +6,7 @@ import asyncio
 import logging
 import subprocess
 import tempfile
+import time
 import os
 import uuid as _uuid
 
@@ -17,6 +18,7 @@ from orchestrator.staging_prompts import get_staging_prompt
 from orchestrator.pipeline.state import store
 from orchestrator.stores.user import UserStore
 from orchestrator.services.agent import agent_service
+from orchestrator.services.minimax import MiniMaxService
 from orchestrator.services.r2 import r2_service
 from orchestrator.services.render import render_service
 from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, PROMPT_PUSH_IN, PROMPT_ROTATE
@@ -32,6 +34,94 @@ def _find_input_space(state: JobState, space: SpaceInfo) -> SpaceInput | None:
     """Match agent space to input space by original_label (fallback to name)."""
     match_label = space.original_label or space.name
     return next((s for s in state.spaces_input if s.label == match_label), None)
+
+
+async def _narration_gate_poll(job_id: str, redis) -> tuple[str, str | None]:
+    """Poll narration gate Redis key. Returns (action, edited_text).
+    action: 'approved' | 'rejected' | 'edit'
+    """
+    key = f"narration_gate:{job_id}"
+    deadline = time.monotonic() + 600  # 10 min
+    while time.monotonic() < deadline:
+        val = await redis.get(key)
+        if val is None or val in ("pending", "edit_pending"):
+            await asyncio.sleep(3)
+            continue
+        if val == "approved":
+            return "approved", None
+        if val == "rejected":
+            return "rejected", None
+        if val.startswith("edit:"):
+            return "edit", val[5:]
+        await asyncio.sleep(3)
+    # Timeout → auto-approve
+    return "approved", None
+
+
+async def _task_tts(
+    state: JobState, redis, minimax: MiniMaxService, r2
+) -> None:
+    """Run narration gate + TTS. Updates state in-place."""
+    if not state.narration_enabled or not state.narration_text:
+        return
+
+    # Set gate pending
+    gate_key = f"narration_gate:{state.job_id}"
+    await redis.set(gate_key, "pending", ex=3600)
+
+    # Notify user — push narration preview
+    if line_bot and state.line_user_id:
+        await line_bot.send_gate_narration(
+            state.line_user_id, state.job_id, state.narration_text,
+        )
+
+    state.narration_gate_status = "pending"
+    await store.save(state)
+
+    # Wait for gate
+    action, edited_text = await _narration_gate_poll(state.job_id, redis)
+
+    if action == "rejected":
+        state.narration_gate_status = "rejected"
+        state.narration_enabled = False
+        await store.save(state)
+        return
+
+    # Use edited text if provided
+    final_text = edited_text if action == "edit" else state.narration_text
+    state.narration_text = final_text
+    state.narration_gate_status = "approved"
+    await store.save(state)
+
+    # Run TTS
+    audio_bytes = await minimax.synthesize(final_text)
+    if not audio_bytes:
+        logger.warning("TTS failed, degrading to no narration: job=%s", state.job_id)
+        state.narration_url = None
+        await store.save(state)
+        return
+
+    # Log duration (observability)
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            f.write(audio_bytes)
+            tmp_path = f.name
+        result = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+             "-of", "csv=p=0", tmp_path],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode == 0:
+            duration = float(result.stdout.strip())
+            logger.info("TTS audio duration: %.1fs (job=%s)", duration, state.job_id)
+    except Exception:
+        pass  # observability only
+
+    # Upload to R2
+    r2_key = f"audio/{state.job_id}/narration.mp3"
+    narration_url = await r2.upload_bytes(audio_bytes, r2_key, "audio/mpeg")
+    state.narration_url = narration_url
+    await store.save(state)
 
 
 # ── Main pipeline runner ──
@@ -112,6 +202,11 @@ async def step_analyze(state: JobState) -> None:
                 prop.phone = prop.phone or profile.phone
                 prop.line = prop.line or profile.line_id
                 await store.save(state)
+
+    # Copy narration text for TTS
+    if state.narration_enabled and state.agent_result and state.agent_result.narration:
+        state.narration_text = state.agent_result.narration
+        await store.save(state)
 
 
 # ── Step 2: Parallel Asset Generation ──
@@ -291,8 +386,27 @@ async def step_generate(state: JobState) -> None:
             logger.info(f"[{state.job_id}] Staging {space.name} with room-specific prompt")
             tasks.append(_task_staging(state, space.name, photos[-1], staging_prompt))
 
+    # TTS task runs in parallel with asset generation
+    tts_task = None
+    minimax = None
+    if state.narration_enabled and state.narration_text:
+        minimax = MiniMaxService(
+            api_key=settings.minimax_api_key,
+            group_id=settings.minimax_group_id,
+            poll_interval=settings.minimax_poll_interval,
+            poll_timeout=settings.minimax_poll_timeout,
+        )
+        tts_task = asyncio.create_task(
+            _task_tts(state, store.r, minimax, r2_service)
+        )
+
     results = await asyncio.gather(*tasks, return_exceptions=True)
     state = await store.get(state.job_id)
+
+    # Wait for TTS if running, then cleanup
+    if tts_task:
+        await tts_task
+        await minimax.close()
 
     for r in results:
         if isinstance(r, Exception):
