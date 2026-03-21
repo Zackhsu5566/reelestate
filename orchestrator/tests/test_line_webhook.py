@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import FastAPI
 import httpx
 from httpx import AsyncClient
@@ -30,6 +30,14 @@ def mock_conv_manager():
         "job_id": None,
     })
     m.add_photo = AsyncMock(return_value=1)
+    return m
+
+
+@pytest.fixture
+def mock_user_store():
+    """User store mock that returns a non-None profile by default."""
+    m = AsyncMock()
+    m.get = AsyncMock(return_value=MagicMock())  # non-None = registered user
     return m
 
 
@@ -110,7 +118,7 @@ async def test_webhook_image_during_processing(test_app, mock_conv_manager):
 
 
 @pytest.mark.asyncio
-async def test_webhook_text_label(test_app, mock_conv_manager):
+async def test_webhook_text_label(test_app, mock_conv_manager, mock_user_store):
     """User sends space label while in awaiting_label state."""
     mock_conv_manager.get.return_value = {
         "state": "awaiting_label",
@@ -121,39 +129,40 @@ async def test_webhook_text_label(test_app, mock_conv_manager):
     }
     async with AsyncClient(transport=httpx.ASGITransport(app=test_app), base_url="http://test") as client:
         with patch("orchestrator.line.webhook.conv_manager", mock_conv_manager):
-            with patch("orchestrator.line.webhook.line_bot") as mock_bot:
-                mock_bot.send_space_summary = AsyncMock()
-                # After assign_label, get() returns updated state
-                mock_conv_manager.get.side_effect = [
-                    {  # First call in _handle_text
-                        "state": "awaiting_label",
-                        "pending_photos": ["https://r2.example.com/p1.jpg"],
-                        "spaces": [],
-                        "exterior_photo": None,
-                        "job_id": None,
-                    },
-                    {  # Second call after assign_label
-                        "state": "idle",
-                        "pending_photos": [],
-                        "spaces": [{"label": "客廳", "photos": ["https://r2.example.com/p1.jpg"]}],
-                        "exterior_photo": None,
-                        "job_id": None,
-                    },
-                ]
-                resp = await client.post("/webhook/line", json={
-                    "events": [{
-                        "type": "message",
-                        "message": {"type": "text", "text": "客廳"},
-                        "source": {"userId": "U1234"},
-                    }]
-                })
+            with patch("orchestrator.line.webhook.user_store", mock_user_store):
+                with patch("orchestrator.line.webhook.line_bot") as mock_bot:
+                    mock_bot.send_space_summary = AsyncMock()
+                    # After assign_label, get() returns updated state
+                    mock_conv_manager.get.side_effect = [
+                        {  # First call in _handle_text
+                            "state": "awaiting_label",
+                            "pending_photos": ["https://r2.example.com/p1.jpg"],
+                            "spaces": [],
+                            "exterior_photo": None,
+                            "job_id": None,
+                        },
+                        {  # Second call after assign_label
+                            "state": "idle",
+                            "pending_photos": [],
+                            "spaces": [{"label": "客廳", "photos": ["https://r2.example.com/p1.jpg"]}],
+                            "exterior_photo": None,
+                            "job_id": None,
+                        },
+                    ]
+                    resp = await client.post("/webhook/line", json={
+                        "events": [{
+                            "type": "message",
+                            "message": {"type": "text", "text": "客廳"},
+                            "source": {"userId": "U1234"},
+                        }]
+                    })
     assert resp.status_code == 200
     mock_conv_manager.assign_label.assert_called_once_with("U1234", "客廳")
     mock_bot.send_space_summary.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_webhook_complete_command(test_app, mock_conv_manager):
+async def test_webhook_complete_command(test_app, mock_conv_manager, mock_user_store):
     """User sends '完成' in idle with spaces → complete_photos + send_info_prompt."""
     mock_conv_manager.get.return_value = {
         "state": "idle",
@@ -164,22 +173,23 @@ async def test_webhook_complete_command(test_app, mock_conv_manager):
     }
     async with AsyncClient(transport=httpx.ASGITransport(app=test_app), base_url="http://test") as client:
         with patch("orchestrator.line.webhook.conv_manager", mock_conv_manager):
-            with patch("orchestrator.line.webhook.line_bot") as mock_bot:
-                mock_bot.send_info_prompt = AsyncMock()
-                resp = await client.post("/webhook/line", json={
-                    "events": [{
-                        "type": "message",
-                        "message": {"type": "text", "text": "完成"},
-                        "source": {"userId": "U1234"},
-                    }]
-                })
+            with patch("orchestrator.line.webhook.user_store", mock_user_store):
+                with patch("orchestrator.line.webhook.line_bot") as mock_bot:
+                    mock_bot.send_info_prompt = AsyncMock()
+                    resp = await client.post("/webhook/line", json={
+                        "events": [{
+                            "type": "message",
+                            "message": {"type": "text", "text": "完成"},
+                            "source": {"userId": "U1234"},
+                        }]
+                    })
     assert resp.status_code == 200
     mock_conv_manager.complete_photos.assert_called_once_with("U1234")
     mock_bot.send_info_prompt.assert_called_once_with("U1234")
 
 
 @pytest.mark.asyncio
-async def test_webhook_batch_complete(test_app, mock_conv_manager):
+async def test_webhook_batch_complete(test_app, mock_conv_manager, mock_user_store):
     """User sends '完成' during collecting_photos → finalize + label prompt."""
     mock_conv_manager.get.return_value = {
         "state": "collecting",
@@ -190,15 +200,16 @@ async def test_webhook_batch_complete(test_app, mock_conv_manager):
     }
     async with AsyncClient(transport=httpx.ASGITransport(app=test_app), base_url="http://test") as client:
         with patch("orchestrator.line.webhook.conv_manager", mock_conv_manager):
-            with patch("orchestrator.line.webhook.line_bot") as mock_bot:
-                mock_bot.send_label_prompt = AsyncMock()
-                resp = await client.post("/webhook/line", json={
-                    "events": [{
-                        "type": "message",
-                        "message": {"type": "text", "text": "完成"},
-                        "source": {"userId": "U1234"},
-                    }]
-                })
+            with patch("orchestrator.line.webhook.user_store", mock_user_store):
+                with patch("orchestrator.line.webhook.line_bot") as mock_bot:
+                    mock_bot.send_label_prompt = AsyncMock()
+                    resp = await client.post("/webhook/line", json={
+                        "events": [{
+                            "type": "message",
+                            "message": {"type": "text", "text": "完成"},
+                            "source": {"userId": "U1234"},
+                        }]
+                    })
     assert resp.status_code == 200
     mock_conv_manager.finalize_batch.assert_called_once_with("U1234")
     mock_bot.send_label_prompt.assert_called_once_with("U1234", 2)
@@ -231,7 +242,7 @@ async def test_webhook_reset_command(test_app, mock_conv_manager):
 
 
 @pytest.mark.asyncio
-async def test_webhook_text_during_collecting(test_app, mock_conv_manager):
+async def test_webhook_text_during_collecting(test_app, mock_conv_manager, mock_user_store):
     """Random text during collecting_photos should hint to use '完成'."""
     mock_conv_manager.get.return_value = {
         "state": "collecting",
@@ -242,21 +253,22 @@ async def test_webhook_text_during_collecting(test_app, mock_conv_manager):
     }
     async with AsyncClient(transport=httpx.ASGITransport(app=test_app), base_url="http://test") as client:
         with patch("orchestrator.line.webhook.conv_manager", mock_conv_manager):
-            with patch("orchestrator.line.webhook.line_bot") as mock_bot:
-                mock_bot.send_message = AsyncMock()
-                resp = await client.post("/webhook/line", json={
-                    "events": [{
-                        "type": "message",
-                        "message": {"type": "text", "text": "你好"},
-                        "source": {"userId": "U1234"},
-                    }]
-                })
+            with patch("orchestrator.line.webhook.user_store", mock_user_store):
+                with patch("orchestrator.line.webhook.line_bot") as mock_bot:
+                    mock_bot.send_message = AsyncMock()
+                    resp = await client.post("/webhook/line", json={
+                        "events": [{
+                            "type": "message",
+                            "message": {"type": "text", "text": "你好"},
+                            "source": {"userId": "U1234"},
+                        }]
+                    })
     assert resp.status_code == 200
     assert "完成" in mock_bot.send_message.call_args[0][1]
 
 
 @pytest.mark.asyncio
-async def test_webhook_text_during_processing(test_app, mock_conv_manager):
+async def test_webhook_text_during_processing(test_app, mock_conv_manager, mock_user_store):
     """Text during processing should show 'making video' message."""
     mock_conv_manager.get.return_value = {
         "state": "processing",
@@ -267,15 +279,16 @@ async def test_webhook_text_during_processing(test_app, mock_conv_manager):
     }
     async with AsyncClient(transport=httpx.ASGITransport(app=test_app), base_url="http://test") as client:
         with patch("orchestrator.line.webhook.conv_manager", mock_conv_manager):
-            with patch("orchestrator.line.webhook.line_bot") as mock_bot:
-                mock_bot.send_message = AsyncMock()
-                resp = await client.post("/webhook/line", json={
-                    "events": [{
-                        "type": "message",
-                        "message": {"type": "text", "text": "好了嗎"},
-                        "source": {"userId": "U1234"},
-                    }]
-                })
+            with patch("orchestrator.line.webhook.user_store", mock_user_store):
+                with patch("orchestrator.line.webhook.line_bot") as mock_bot:
+                    mock_bot.send_message = AsyncMock()
+                    resp = await client.post("/webhook/line", json={
+                        "events": [{
+                            "type": "message",
+                            "message": {"type": "text", "text": "好了嗎"},
+                            "source": {"userId": "U1234"},
+                        }]
+                    })
     assert resp.status_code == 200
     assert "製作中" in mock_bot.send_message.call_args[0][1]
 
