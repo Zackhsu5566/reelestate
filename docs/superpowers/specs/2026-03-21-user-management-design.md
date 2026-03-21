@@ -81,17 +81,17 @@ async def try_consume_quota(self, line_user_id: str) -> bool:
 新增（註冊，4 步）：
   registering_name → registering_company → registering_phone → registering_line_id → idle
 
-新增（風格選擇）：
-  choosing_style（在 awaiting_info 之後）
+新增（job 前置選擇）：
+  choosing_style → awaiting_narration_choice（在 awaiting_info 之後）
 
 完整流程（新用戶）：
   首次訊息 → registering_name → registering_company → registering_phone
   → registering_line_id → idle → collecting_photos → awaiting_label → awaiting_info
-  → choosing_style → 配額檢查 → processing → awaiting_feedback
+  → choosing_style → awaiting_narration_choice → 配額檢查 → processing → awaiting_feedback
 
 完整流程（既有用戶）：
   idle → collecting_photos → awaiting_label → awaiting_info
-  → choosing_style → 配額檢查 → processing → awaiting_feedback
+  → choosing_style → awaiting_narration_choice → 配額檢查 → processing → awaiting_feedback
 ```
 
 **全域指令擴充**：新增「重新註冊」指令，允許既有用戶重新填寫個人資訊（刪除現有 profile，重新進入 `registering_name`）。完整全域指令清單：「重新開始」「取消」「使用說明」「重新註冊」。

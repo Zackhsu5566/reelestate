@@ -209,9 +209,11 @@ narration?: string;
 
 ### 5a. 新增「旁白選擇」步驟
 
-新增 `ConversationState.awaiting_narration_choice`，位於 `awaiting_info` → `processing` 之間。
+新增 `ConversationState.awaiting_narration_choice`，位於 `choosing_style` → `processing` 之間。
 
-用戶傳完物件資訊後：
+完整 job 前置流程：`awaiting_info → choosing_style → awaiting_narration_choice → 配額檢查 → processing`
+
+用戶選完風格後：
 
 ```
 Bot: 要加入 AI 旁白嗎？
