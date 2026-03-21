@@ -229,6 +229,27 @@ async def _handle_text(user_id: str, text: str) -> None:
         await _handle_registration_line_id(user_id, text, line_bot, conv_manager, user_store)
         return
 
+    # ── editing_narration ──
+    if current == ConversationState.editing_narration:
+        job_id = state.get("job_id")
+        # 字數限制檢查
+        from orchestrator.pipeline.state import store
+        job_state = await store.get(job_id)
+        if job_state and job_state.narration_text:
+            max_len = int(len(job_state.narration_text) * 1.5)
+            if len(text) > max_len:
+                await line_bot.send_message(
+                    user_id,
+                    f"講稿過長（{len(text)} 字），請縮短至 {max_len} 字以內。",
+                )
+                return
+        gate_key = f"narration_gate:{job_id}"
+        await conv_manager._r.set(gate_key, f"edit:{text}", ex=3600)
+        state["state"] = ConversationState.processing
+        await conv_manager._save(user_id, state)
+        await line_bot.send_message(user_id, "講稿已更新，正在生成旁白...")
+        return
+
     # 新用戶 → 開始註冊
     if profile is None:
         await conv_manager.start_registration(user_id)
@@ -399,6 +420,24 @@ async def _handle_postback(user_id: str, data: str) -> None:
         # fetch fresh profile after successful quota consumption
         profile = await user_store.get(user_id)
         await _create_job(user_id, state.get("raw_text", ""), state, profile)
+        return
+
+    # Narration gate
+    if data.startswith("narration_gate:"):
+        parts = data.split(":")
+        if len(parts) == 3:
+            job_id, action = parts[1], parts[2]
+            gate_key = f"narration_gate:{job_id}"
+            if action == "approved":
+                await conv_manager._r.set(gate_key, "approved", ex=3600)
+            elif action == "rejected":
+                await conv_manager._r.set(gate_key, "rejected", ex=3600)
+            elif action == "edit":
+                await conv_manager._r.set(gate_key, "edit_pending", ex=3600)
+                state = await conv_manager.get(user_id)
+                state["state"] = ConversationState.editing_narration
+                await conv_manager._save(user_id, state)
+                await line_bot.send_message(user_id, "請輸入修改後的講稿：")
         return
 
     # Existing approve/reject handling

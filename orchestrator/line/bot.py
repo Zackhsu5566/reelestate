@@ -480,6 +480,57 @@ class LineBot:
         """Remind user that only text is accepted in the current state, then re-prompt."""
         await self.send_message(chat_id, f"請輸入文字訊息喔！\n{reprompt}")
 
+    async def send_gate_narration(
+        self, chat_id: str, job_id: str, narration_text: str,
+    ) -> None:
+        """Send narration preview with approve/edit/reject buttons."""
+        import re
+        display_text = re.sub(r"^\[.+?\]\s*$", "", narration_text, flags=re.MULTILINE)
+        display_text = re.sub(r"<#[\d.]+#>", "", display_text).strip()
+
+        actions = [
+            {
+                "type": "postback",
+                "label": "✅ 通過",
+                "data": f"narration_gate:{job_id}:approved",
+            },
+            {
+                "type": "postback",
+                "label": "✏️ 修改講稿",
+                "data": f"narration_gate:{job_id}:edit",
+            },
+            {
+                "type": "postback",
+                "label": "❌ 不要旁白",
+                "data": f"narration_gate:{job_id}:rejected",
+            },
+        ]
+        bubble = {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {"type": "text", "text": "📝 AI 生成的旁白講稿", "weight": "bold", "size": "lg"},
+                    {"type": "separator", "margin": "md"},
+                    {"type": "text", "text": display_text, "wrap": True,
+                     "size": "sm", "margin": "md"},
+                ],
+            },
+            "footer": {
+                "type": "box",
+                "layout": "horizontal",
+                "spacing": "sm",
+                "contents": [
+                    {"type": "button", "action": a, "style": "primary"
+                     if a["label"].startswith("✅") else "secondary",
+                     "height": "sm"}
+                    for a in actions
+                ],
+            },
+        }
+        await self._push(chat_id, [{"type": "flex", "altText": "旁白講稿確認", "contents": bubble}])
+
 
 # Module-level singleton (initialized with empty token; config applied at startup)
 line_bot = LineBot()
