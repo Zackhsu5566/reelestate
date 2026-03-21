@@ -372,6 +372,8 @@ class LineBot:
             ]
         await self._push(chat_id, messages)
 
+    # ── Registration & job options ──
+
     async def send_registration_name_prompt(self, chat_id: str) -> None:
         await self.send_message(
             chat_id,
@@ -471,9 +473,11 @@ class LineBot:
         )
 
     async def send_validation_error(self, chat_id: str, message: str) -> None:
+        """Show a field-specific validation failure message during registration."""
         await self.send_message(chat_id, message)
 
     async def send_text_only_reminder(self, chat_id: str, reprompt: str) -> None:
+        """Remind user that only text is accepted in the current state, then re-prompt."""
         await self.send_message(chat_id, f"請輸入文字訊息喔！\n{reprompt}")
 
 
