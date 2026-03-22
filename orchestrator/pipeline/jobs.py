@@ -30,10 +30,28 @@ logger = logging.getLogger(__name__)
 # ── Helpers ──
 
 
-def _find_input_space(state: JobState, space: SpaceInfo) -> SpaceInput | None:
-    """Match agent space to input space by original_label (fallback to name)."""
-    match_label = space.original_label or space.name
-    return next((s for s in state.spaces_input if s.label == match_label), None)
+def _build_task_key_prefix(space_index: int) -> str:
+    """Unique prefix for asset_task keys based on space position."""
+    return str(space_index)
+
+
+def _get_space_photos(state: JobState, space: SpaceInfo, space_index: int) -> list[str]:
+    """Get photos for a space — use agent's assignment directly.
+    Fallback uses positional index to avoid duplicate-name bugs.
+    """
+    if space.photos:
+        return space.photos
+    # Fallback: positional match (safe for duplicate labels)
+    if space_index < len(state.spaces_input):
+        return state.spaces_input[space_index].photos
+    return []
+
+
+def _find_input_space(state: JobState, space_index: int) -> SpaceInput | None:
+    """Get input space by index for metadata (is_small_space)."""
+    if space_index < len(state.spaces_input):
+        return state.spaces_input[space_index]
+    return None
 
 
 async def _narration_gate_poll(job_id: str, redis) -> tuple[str, str | None]:
@@ -245,11 +263,11 @@ async def _reverse_video(video_url: str) -> str:
 
 
 async def _task_kling_video(
-    state: JobState, space_name: str, photo_index: int, photo_url: str, prompt: str,
+    state: JobState, key_prefix: str, photo_index: int, photo_url: str, prompt: str,
     needs_reverse: bool = False,
 ) -> None:
     """Single photo → Kling v2.5 video. Optionally reverse for staging."""
-    key = f"clip:{space_name}:{photo_index}"
+    key = f"clip:{key_prefix}:{photo_index}"
     existing = state.asset_tasks.get(key)
     if existing and existing.status == "completed":
         return
@@ -310,10 +328,10 @@ async def _task_exterior_video(state: JobState) -> None:
 
 
 async def _task_staging(
-    state: JobState, space_name: str, photo_url: str, prompt: str
+    state: JobState, key_prefix: str, photo_url: str, prompt: str
 ) -> None:
     """Virtual staging via nano-banana-2."""
-    key = f"staging:{space_name}"
+    key = f"staging:{key_prefix}"
     existing = state.asset_tasks.get(key)
     if existing and existing.status == "completed":
         return
@@ -338,7 +356,7 @@ async def _task_staging(
             state.job_id, key, AssetTask(status="failed", error=str(e))
         )
         # Staging failure is non-critical, don't raise
-        logger.warning(f"Staging failed for {space_name}: {e}")
+        logger.warning(f"Staging failed for {key_prefix}: {e}")
 
 
 async def step_generate(state: JobState) -> None:
@@ -355,12 +373,13 @@ async def step_generate(state: JobState) -> None:
     if state.exterior_photo:
         tasks.append(_task_exterior_video(state))
 
-    for space in agent.spaces:
-        input_space = _find_input_space(state, space)
-        if input_space is None:
+    for si, space in enumerate(agent.spaces):
+        photos = _get_space_photos(state, space, si)
+        if not photos:
             continue
 
-        photos = input_space.photos
+        prefix = _build_task_key_prefix(si)
+
         # Resolve room-specific staging prompt per space
         staging_prompt = (
             get_staging_prompt(state.staging_template, space.name)
@@ -376,13 +395,13 @@ async def step_generate(state: JobState) -> None:
             is_last = (idx == len(photos) - 1)
             needs_reverse = has_staging and is_last
             tasks.append(_task_kling_video(
-                state, space.name, idx, photo_url, camera_prompt,
+                state, prefix, idx, photo_url, camera_prompt,
                 needs_reverse=needs_reverse,
             ))
 
         if has_staging:
-            logger.info(f"[{state.job_id}] Staging {space.name} with room-specific prompt")
-            tasks.append(_task_staging(state, space.name, photos[-1], staging_prompt))
+            logger.info(f"[{state.job_id}] Staging {space.name} (si={si}) with room-specific prompt")
+            tasks.append(_task_staging(state, prefix, photos[-1], staging_prompt))
 
     # TTS task runs in parallel with asset generation
     tts_task = None
@@ -611,18 +630,19 @@ async def _build_render_input(state: JobState) -> dict:
     has_staging_template = state.premium and state.staging_template is not None
 
     # Clip scenes (per photo)
-    for space in agent.spaces:
-        input_space = _find_input_space(state, space)
-        if input_space is None:
+    for si, space in enumerate(agent.spaces):
+        photos = _get_space_photos(state, space, si)
+        if not photos:
             continue
 
-        is_small = input_space.is_small_space
+        input_space = _find_input_space(state, si)
+        is_small = input_space.is_small_space if input_space else False
         duration = CLIP_SMALL_FRAMES if is_small else CLIP_FRAMES
-        photos = input_space.photos
+        prefix = _build_task_key_prefix(si)
         has_staging = has_staging_template and get_staging_prompt(state.staging_template, space.name) is not None
 
         for idx in range(len(photos)):
-            clip_key = f"clip:{space.name}:{idx}"
+            clip_key = f"clip:{prefix}:{idx}"
             clip_task = state.asset_tasks.get(clip_key)
             if not clip_task or clip_task.status != "completed":
                 logger.warning(f"Clip {clip_key} not completed, skipping")
@@ -637,7 +657,7 @@ async def _build_render_input(state: JobState) -> dict:
             }
 
             if has_staging and is_last:
-                staging_task = state.asset_tasks.get(f"staging:{space.name}")
+                staging_task = state.asset_tasks.get(f"staging:{prefix}")
                 if staging_task and staging_task.status == "completed":
                     scene["stagingImage"] = staging_task.output_url
 
@@ -646,10 +666,10 @@ async def _build_render_input(state: JobState) -> dict:
     # Background image
     bg_src = state.exterior_photo
     if not bg_src:
-        for space in reversed(agent.spaces):
-            input_space = _find_input_space(state, space)
-            if input_space and input_space.photos:
-                bg_src = input_space.photos[0]
+        for ri, space in reversed(list(enumerate(agent.spaces))):
+            photos = _get_space_photos(state, space, ri)
+            if photos:
+                bg_src = photos[0]
                 break
 
     scenes.append({"type": "stats", "durationInFrames": STATS_FRAMES, **({"backgroundSrc": bg_src} if bg_src else {})})

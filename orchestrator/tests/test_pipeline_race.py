@@ -128,3 +128,64 @@ class TestTaskTtsNoOverwrite:
 
         mock_store.save.assert_not_called()
         assert mock_store.update_narration.call_count >= 1
+
+
+from orchestrator.models import SpaceInfo, SpaceInput, AgentResult, PropertyInfo, AgentMeta
+
+# Stub heavy dependencies so jobs module can be imported at class level
+for _mod_name in [
+    "anthropic", "orchestrator.services.agent",
+    "orchestrator.services.wavespeed", "orchestrator.services.render",
+    "orchestrator.services.r2", "orchestrator.stores.user",
+    "orchestrator.line.bot", "orchestrator.staging_prompts",
+    "orchestrator.services.minimax",
+]:
+    sys.modules.setdefault(_mod_name, MagicMock())
+
+
+def _make_agent_result(spaces: list[SpaceInfo]) -> AgentResult:
+    return AgentResult(
+        property=PropertyInfo(address="test"),
+        title="test",
+        narration="test narration",
+        spaces=spaces,
+        meta=AgentMeta(agent_version="3.0"),
+    )
+
+
+class TestDuplicateSpaceKeys:
+    """Two spaces with same name must produce unique asset_task keys."""
+
+    def test_build_task_key_prefix_unique(self):
+        from orchestrator.pipeline.jobs import _build_task_key_prefix
+        assert _build_task_key_prefix(0) != _build_task_key_prefix(1)
+
+    def test_get_space_photos_uses_agent_photos(self):
+        from orchestrator.pipeline.jobs import _get_space_photos
+
+        state = _make_state(
+            spaces_input=[
+                SpaceInput(label="臥室", photos=["photo_A.jpg"]),
+                SpaceInput(label="臥室", photos=["photo_B.jpg"]),
+            ],
+        )
+        space_a = SpaceInfo(name="臥室", photo_count=1, photos=["photo_A.jpg"])
+        space_b = SpaceInfo(name="臥室", photo_count=1, photos=["photo_B.jpg"])
+
+        assert _get_space_photos(state, space_a, 0) == ["photo_A.jpg"]
+        assert _get_space_photos(state, space_b, 1) == ["photo_B.jpg"]
+
+    def test_fallback_uses_positional_index(self):
+        from orchestrator.pipeline.jobs import _get_space_photos
+
+        state = _make_state(
+            spaces_input=[
+                SpaceInput(label="臥室", photos=["photo_A.jpg"]),
+                SpaceInput(label="臥室", photos=["photo_B.jpg"]),
+            ],
+        )
+        space_a = SpaceInfo(name="臥室", photo_count=1, photos=[])
+        space_b = SpaceInfo(name="臥室", photo_count=1, photos=[])
+
+        assert _get_space_photos(state, space_a, 0) == ["photo_A.jpg"]
+        assert _get_space_photos(state, space_b, 1) == ["photo_B.jpg"]
