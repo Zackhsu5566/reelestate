@@ -8,8 +8,12 @@ import re
 import time
 
 import aiohttp
+import opencc
 
 logger = logging.getLogger(__name__)
+
+# Traditional → Simplified Chinese converter (MiniMax TTS trained on Simplified)
+_t2s = opencc.OpenCC("t2s")
 
 # Limit parallel TTS submissions at module level so all instances share the cap
 _tts_semaphore = asyncio.Semaphore(5)
@@ -56,6 +60,7 @@ class MiniMaxService:
 
     async def _synthesize_inner(self, narration_text: str) -> bytes | None:
         text = self._strip_markers(narration_text)
+        text = _t2s.convert(text)
         session = await self._get_session()
 
         task_id = await self._create_task(session, text)

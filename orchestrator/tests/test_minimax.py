@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from orchestrator.services.minimax import MiniMaxService
+from orchestrator.services.minimax import MiniMaxService, _t2s
 
 
 @pytest.fixture
@@ -21,6 +21,12 @@ def test_strip_section_markers(service):
     assert "<#1.0#>" in result
     assert "信義區" in result
     assert "大落地窗" in result
+
+
+def test_traditional_to_simplified_conversion(service):
+    """Narration text should be converted to Simplified Chinese for MiniMax."""
+    assert _t2s.convert("信義區的優質物件") == "信义区的优质物件"
+    assert _t2s.convert("大落地窗與陽台") == "大落地窗与阳台"
 
 
 @pytest.mark.asyncio
