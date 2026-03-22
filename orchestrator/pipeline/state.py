@@ -74,6 +74,23 @@ class JobStore:
             state.asset_tasks[task_key] = task
             await self.save(state)
 
+    _NARRATION_FIELDS = {
+        "narration_enabled", "narration_gate_status",
+        "narration_text", "narration_task_id", "narration_url",
+    }
+
+    async def update_narration(self, job_id: str, **fields) -> None:
+        """Atomically update only narration fields without clobbering asset_tasks."""
+        async with self._get_lock(job_id):
+            state = await self.get(job_id)
+            if state is None:
+                return
+            for k, v in fields.items():
+                if k not in self._NARRATION_FIELDS:
+                    raise ValueError(f"Not a narration field: {k}")
+                setattr(state, k, v)
+            await self.save(state)
+
     async def append_error(self, job_id: str, error: str) -> None:
         async with self._get_lock(job_id):
             state = await self.get(job_id)
