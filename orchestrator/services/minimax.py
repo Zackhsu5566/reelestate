@@ -78,6 +78,7 @@ class MiniMaxService:
             "voice_setting": {
                 "voice_id": "Chinese_casual_guide_vv2",
                 "speed": 1.0,
+                "language_boost": "zh",
             },
             "audio_setting": {
                 "format": "mp3",
