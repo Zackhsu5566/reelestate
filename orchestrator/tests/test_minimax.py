@@ -25,16 +25,11 @@ def test_strip_section_markers(service):
 
 @pytest.mark.asyncio
 async def test_synthesize_success(service):
-    """Test full TTS flow with mocked HTTP calls."""
+    """Test full TTS flow: create task → poll → download."""
     mock_session = AsyncMock()
     mock_session.closed = False
 
-    # Mock file upload response
-    upload_resp = AsyncMock()
-    upload_resp.status = 200
-    upload_resp.json = AsyncMock(return_value={"file": {"file_id": "f123"}})
-
-    # Mock create task response
+    # Mock create task response (single POST, no upload step)
     create_resp = AsyncMock()
     create_resp.status = 200
     create_resp.json = AsyncMock(return_value={"task_id": "t456"})
@@ -52,7 +47,7 @@ async def test_synthesize_success(service):
     download_resp.status = 200
     download_resp.read = AsyncMock(return_value=b"fake-mp3-data")
 
-    mock_session.post = AsyncMock(side_effect=[upload_resp, create_resp])
+    mock_session.post = AsyncMock(return_value=create_resp)
     mock_session.get = AsyncMock(side_effect=[poll_resp, download_resp])
 
     with patch.object(service, "_session", mock_session):
@@ -66,9 +61,10 @@ async def test_synthesize_returns_none_on_failure(service):
     """TTS failure should return None (graceful degradation)."""
     mock_session = AsyncMock()
     mock_session.closed = False
-    upload_resp = AsyncMock()
-    upload_resp.status = 500
-    mock_session.post = AsyncMock(return_value=upload_resp)
+    create_resp = AsyncMock()
+    create_resp.status = 500
+    create_resp.text = AsyncMock(return_value="Internal Server Error")
+    mock_session.post = AsyncMock(return_value=create_resp)
 
     with patch.object(service, "_session", mock_session):
         result = await service.synthesize("測試")

@@ -58,11 +58,7 @@ class MiniMaxService:
         text = self._strip_markers(narration_text)
         session = await self._get_session()
 
-        file_id = await self._upload_text(session, text)
-        if not file_id:
-            return None
-
-        task_id = await self._create_task(session, file_id)
+        task_id = await self._create_task(session, text)
         if not task_id:
             return None
 
@@ -72,37 +68,13 @@ class MiniMaxService:
 
         return await self._download_audio(session, audio_file_id)
 
-    async def _upload_text(
-        self, session: aiohttp.ClientSession, text: str
-    ) -> str | None:
-        url = f"{_BASE_URL}/files/upload"
-
-        for attempt in range(2):
-            # FormData must be re-created per attempt (consumed after first post)
-            form = aiohttp.FormData()
-            form.add_field(
-                "file",
-                text.encode("utf-8"),
-                filename="narration.txt",
-                content_type="text/plain",
-            )
-            form.add_field("purpose", "file-extract")
-            try:
-                resp = await session.post(url, data=form)
-                if resp.status == 200:
-                    data = await resp.json()
-                    return data.get("file", {}).get("file_id")
-                logger.warning("TTS upload failed: status=%d", resp.status)
-            except Exception:
-                logger.exception("TTS upload error (attempt %d)", attempt + 1)
-        return None
-
     async def _create_task(
-        self, session: aiohttp.ClientSession, file_id: str
+        self, session: aiohttp.ClientSession, text: str
     ) -> str | None:
         url = f"{_BASE_URL}/t2a_async_v2?GroupId={self.group_id}"
         payload = {
             "model": "speech-2.8-hd",
+            "text": text,
             "voice_setting": {
                 "voice_id": "Chinese_casual_guide_vv2",
                 "speed": 1.0,
@@ -111,16 +83,17 @@ class MiniMaxService:
                 "format": "mp3",
                 "sample_rate": 32000,
             },
-            "file_setting": {
-                "file_id": file_id,
-            },
         }
         try:
             resp = await session.post(url, json=payload)
             if resp.status == 200:
                 data = await resp.json()
-                return data.get("task_id")
-            logger.warning("TTS create task failed: status=%d", resp.status)
+                task_id = data.get("task_id")
+                if not task_id:
+                    logger.warning("TTS create task: no task_id in response: %s", data)
+                return task_id
+            body = await resp.text()
+            logger.warning("TTS create task failed: status=%d body=%s", resp.status, body[:200])
         except Exception:
             logger.exception("TTS create task error")
         return None
