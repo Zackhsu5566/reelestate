@@ -76,3 +76,55 @@ class TestUpdateNarration:
 
         with pytest.raises(ValueError, match="Not a narration field"):
             await store.update_narration("test-123", status="failed")
+
+
+class TestTaskTtsNoOverwrite:
+    """_task_tts must never call store.save(state) directly."""
+
+    @pytest.mark.asyncio
+    async def test_tts_uses_update_narration(self):
+        """After _task_tts runs, store.save must NOT be called — only update_narration."""
+        from orchestrator.pipeline.state import JobStore
+
+        mock_store = JobStore()
+        mock_store._redis = AsyncMock()
+        mock_store.save = AsyncMock()
+        mock_store.update_narration = AsyncMock()
+
+        state = _make_state(
+            narration_enabled=True,
+            narration_text="[OPENING]\n測試旁白",
+        )
+
+        mock_redis = AsyncMock()
+        mock_redis.set = AsyncMock()
+        mock_redis.get = AsyncMock(return_value="approved")
+
+        mock_minimax = AsyncMock()
+        mock_minimax.synthesize = AsyncMock(return_value=b"fake-mp3-data")
+
+        mock_r2 = AsyncMock()
+        mock_r2.upload_bytes = AsyncMock(return_value="https://example.com/narration.mp3")
+
+        # Stub heavy dependencies so jobs module can be imported
+        for mod_name in [
+            "anthropic", "orchestrator.services.agent",
+            "orchestrator.services.wavespeed", "orchestrator.services.render",
+            "orchestrator.services.r2", "orchestrator.stores.user",
+            "orchestrator.line.bot", "orchestrator.staging_prompts",
+        ]:
+            sys.modules.setdefault(mod_name, MagicMock())
+
+        from orchestrator.pipeline import jobs
+        original_store = jobs.store
+        original_line_bot = jobs.line_bot
+        try:
+            jobs.store = mock_store
+            jobs.line_bot = None
+            await jobs._task_tts(state, mock_redis, mock_minimax, mock_r2)
+        finally:
+            jobs.store = original_store
+            jobs.line_bot = original_line_bot
+
+        mock_store.save.assert_not_called()
+        assert mock_store.update_narration.call_count >= 1

@@ -61,44 +61,43 @@ async def _narration_gate_poll(job_id: str, redis) -> tuple[str, str | None]:
 async def _task_tts(
     state: JobState, redis, minimax: MiniMaxService, r2
 ) -> None:
-    """Run narration gate + TTS. Updates state in-place."""
+    """Run narration gate + TTS. Uses atomic updates to avoid clobbering asset_tasks."""
+    job_id = state.job_id
     if not state.narration_enabled or not state.narration_text:
         return
 
     # Set gate pending
-    gate_key = f"narration_gate:{state.job_id}"
+    gate_key = f"narration_gate:{job_id}"
     await redis.set(gate_key, "pending", ex=3600)
 
     # Notify user — push narration preview
     if line_bot and state.line_user_id:
         await line_bot.send_gate_narration(
-            state.line_user_id, state.job_id, state.narration_text,
+            state.line_user_id, job_id, state.narration_text,
         )
 
-    state.narration_gate_status = "pending"
-    await store.save(state)
+    await store.update_narration(job_id, narration_gate_status="pending")
 
     # Wait for gate
-    action, edited_text = await _narration_gate_poll(state.job_id, redis)
+    action, edited_text = await _narration_gate_poll(job_id, redis)
 
     if action == "rejected":
-        state.narration_gate_status = "rejected"
-        state.narration_enabled = False
-        await store.save(state)
+        await store.update_narration(
+            job_id, narration_gate_status="rejected", narration_enabled=False,
+        )
         return
 
     # Use edited text if provided
     final_text = edited_text if action == "edit" else state.narration_text
-    state.narration_text = final_text
-    state.narration_gate_status = "approved"
-    await store.save(state)
+    await store.update_narration(
+        job_id, narration_text=final_text, narration_gate_status="approved",
+    )
 
     # Run TTS
     audio_bytes = await minimax.synthesize(final_text)
     if not audio_bytes:
-        logger.warning("TTS failed, degrading to no narration: job=%s", state.job_id)
-        state.narration_url = None
-        await store.save(state)
+        logger.warning("TTS failed, degrading to no narration: job=%s", job_id)
+        await store.update_narration(job_id, narration_url=None)
         return
 
     # Log duration (observability)
@@ -113,15 +112,14 @@ async def _task_tts(
         )
         if result.returncode == 0:
             duration = float(result.stdout.strip())
-            logger.info("TTS audio duration: %.1fs (job=%s)", duration, state.job_id)
+            logger.info("TTS audio duration: %.1fs (job=%s)", duration, job_id)
     except Exception:
         pass  # observability only
 
     # Upload to R2
-    r2_key = f"audio/{state.job_id}/narration.mp3"
+    r2_key = f"audio/{job_id}/narration.mp3"
     narration_url = await r2.upload_bytes(audio_bytes, r2_key, "audio/mpeg")
-    state.narration_url = narration_url
-    await store.save(state)
+    await store.update_narration(job_id, narration_url=narration_url)
 
 
 # ── Main pipeline runner ──
