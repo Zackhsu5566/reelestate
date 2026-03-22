@@ -76,7 +76,7 @@ class MiniMaxService:
             "model": "speech-2.8-hd",
             "text": text,
             "voice_setting": {
-                "voice_id": "Chinese (Mandarin)_Male_Announcer",
+                "voice_id": "Chinese_casual_guide_vv2",
                 "speed": 1.0,
                 "language_boost": "Chinese",
             },
