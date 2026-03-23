@@ -72,7 +72,8 @@ def _classify_room(space_name: str) -> str | None:
 _ROOM_PREFIX = (
     "Edit the image to apply a {style_label} style.\n"
     "Preserve the original image exactly:\n"
-    "- same architecture, walls, windows, doors, and spatial structure\n"
+    "- same architecture, wall positions, windows, doors, and spatial structure\n"
+    "- wall surface finishes (paint, wallpaper, texture) should be updated to match the target style\n"
     "- same camera angle and perspective\n"
     "- same lighting direction and depth\n"
     "Do NOT change the room structure or camera viewpoint.\n"
@@ -100,6 +101,7 @@ _MUJI = "Japanese Muji / Japandi"
 _MUJI_ROOMS: dict[str, str] = {
     "kitchen": _room_prompt(_MUJI, (
         "Kitchen update:\n"
+        "- wall finish → clean matte white or warm beige paint, remove any existing wallpaper\n"
         "- materials → light wood, oak, ash\n"
         "- colors → white, beige, light brown\n"
         "- textures → clean, minimal, natural\n"
@@ -107,6 +109,7 @@ _MUJI_ROOMS: dict[str, str] = {
     )),
     "living_room": _room_prompt(_MUJI, (
         "Living room update:\n"
+        "- wall finish → clean matte white or warm beige paint, remove any existing wallpaper\n"
         "- materials → light wood, oak, ash, natural linen\n"
         "- colors → white, beige, warm grey, light brown\n"
         "- textures → clean, minimal, natural fabrics, matte finishes\n"
@@ -115,6 +118,7 @@ _MUJI_ROOMS: dict[str, str] = {
     )),
     "bedroom": _room_prompt(_MUJI, (
         "Bedroom update:\n"
+        "- wall finish → clean matte white or warm beige paint, remove any existing wallpaper\n"
         "- materials → light wood, oak, ash, natural cotton, linen\n"
         "- colors → white, beige, soft grey, light brown\n"
         "- textures → clean, minimal, natural fibers, matte surfaces\n"
@@ -122,6 +126,7 @@ _MUJI_ROOMS: dict[str, str] = {
     )),
     "bathroom": _room_prompt(_MUJI, (
         "Bathroom update:\n"
+        "- wall finish → clean matte white or warm beige paint, remove any existing wallpaper\n"
         "- materials → light wood, oak, ash, natural stone, matte ceramic\n"
         "- colors → white, beige, warm grey, light brown\n"
         "- textures → clean, minimal, natural, matte finishes\n"
@@ -129,6 +134,7 @@ _MUJI_ROOMS: dict[str, str] = {
     )),
     "dining_room": _room_prompt(_MUJI, (
         "Dining room update:\n"
+        "- wall finish → clean matte white or warm beige paint, remove any existing wallpaper\n"
         "- materials → light wood, oak, ash, natural linen\n"
         "- colors → white, beige, warm grey, light brown\n"
         "- textures → clean, minimal, natural grain, matte finishes\n"
@@ -136,6 +142,7 @@ _MUJI_ROOMS: dict[str, str] = {
     )),
     "home_office": _room_prompt(_MUJI, (
         "Home office update:\n"
+        "- wall finish → clean matte white or warm beige paint, remove any existing wallpaper\n"
         "- materials → light wood, oak, ash, natural paper, linen\n"
         "- colors → white, beige, warm grey, light brown\n"
         "- textures → clean, minimal, natural, matte finishes\n"
@@ -143,6 +150,7 @@ _MUJI_ROOMS: dict[str, str] = {
     )),
     "entryway": _room_prompt(_MUJI, (
         "Entryway update:\n"
+        "- wall finish → clean matte white or warm beige paint, remove any existing wallpaper\n"
         "- materials → light wood, oak, ash, natural stone\n"
         "- colors → white, beige, warm grey, light brown\n"
         "- textures → clean, minimal, natural, matte finishes\n"
@@ -159,6 +167,7 @@ _SCANDI = "Scandinavian"
 _SCANDI_ROOMS: dict[str, str] = {
     "kitchen": _room_prompt(_SCANDI, (
         "Kitchen update:\n"
+        "- wall finish → clean white paint, optional light grey accent wall, remove any existing wallpaper\n"
         "- materials → light wood, birch, pine, matte laminate\n"
         "- colors → white, light grey, soft wood tones\n"
         "- textures → clean, functional, natural grain\n"
@@ -167,6 +176,7 @@ _SCANDI_ROOMS: dict[str, str] = {
     )),
     "living_room": _room_prompt(_SCANDI, (
         "Living room update:\n"
+        "- wall finish → clean white paint, optional light grey accent wall, remove any existing wallpaper\n"
         "- materials → light wood, birch, pine, wool, cotton\n"
         "- colors → white, light grey, soft blue, warm wood\n"
         "- textures → cozy textiles, soft rug, knit throw blanket\n"
@@ -175,6 +185,7 @@ _SCANDI_ROOMS: dict[str, str] = {
     )),
     "bedroom": _room_prompt(_SCANDI, (
         "Bedroom update:\n"
+        "- wall finish → clean white paint, optional light grey accent wall, remove any existing wallpaper\n"
         "- materials → light wood, birch, pine, cotton, wool\n"
         "- colors → white, light grey, soft pastels, warm wood\n"
         "- textures → cozy bedding, knit throw, soft rug\n"
@@ -183,6 +194,7 @@ _SCANDI_ROOMS: dict[str, str] = {
     )),
     "bathroom": _room_prompt(_SCANDI, (
         "Bathroom update:\n"
+        "- wall finish → clean white paint, remove any existing wallpaper\n"
         "- materials → light wood, birch, white ceramic, natural stone\n"
         "- colors → white, light grey, warm wood accents\n"
         "- textures → clean, matte, natural grain\n"
@@ -191,6 +203,7 @@ _SCANDI_ROOMS: dict[str, str] = {
     )),
     "dining_room": _room_prompt(_SCANDI, (
         "Dining room update:\n"
+        "- wall finish → clean white paint, optional light grey accent wall, remove any existing wallpaper\n"
         "- materials → light wood, birch, pine, natural linen\n"
         "- colors → white, light grey, warm wood tones\n"
         "- textures → natural grain, soft fabric seats, matte finishes\n"
@@ -199,6 +212,7 @@ _SCANDI_ROOMS: dict[str, str] = {
     )),
     "home_office": _room_prompt(_SCANDI, (
         "Home office update:\n"
+        "- wall finish → clean white paint, optional light grey accent wall, remove any existing wallpaper\n"
         "- materials → light wood, birch, pine, wool, cotton\n"
         "- colors → white, light grey, warm wood accents\n"
         "- textures → natural grain, soft textiles, matte\n"
@@ -207,6 +221,7 @@ _SCANDI_ROOMS: dict[str, str] = {
     )),
     "entryway": _room_prompt(_SCANDI, (
         "Entryway update:\n"
+        "- wall finish → clean white paint, remove any existing wallpaper\n"
         "- materials → light wood, birch, pine, natural fiber\n"
         "- colors → white, light grey, warm wood\n"
         "- textures → natural grain, woven, matte\n"
@@ -224,6 +239,7 @@ _MODERN = "modern minimalist"
 _MODERN_ROOMS: dict[str, str] = {
     "kitchen": _room_prompt(_MODERN, (
         "Kitchen update:\n"
+        "- wall finish → smooth white or light grey paint, no texture or wallpaper\n"
         "- materials → matte lacquer, engineered stone, stainless steel\n"
         "- colors → white, grey, black accents\n"
         "- textures → sleek, smooth, polished surfaces\n"
@@ -232,6 +248,7 @@ _MODERN_ROOMS: dict[str, str] = {
     )),
     "living_room": _room_prompt(_MODERN, (
         "Living room update:\n"
+        "- wall finish → smooth white or light grey paint, no texture or wallpaper\n"
         "- materials → glass, metal, polished concrete, leather\n"
         "- colors → white, grey, black, monochrome\n"
         "- textures → sleek, smooth, matte-and-gloss contrast\n"
@@ -240,6 +257,7 @@ _MODERN_ROOMS: dict[str, str] = {
     )),
     "bedroom": _room_prompt(_MODERN, (
         "Bedroom update:\n"
+        "- wall finish → smooth white or light grey paint, no texture or wallpaper\n"
         "- materials → lacquer, metal, engineered surfaces, crisp cotton\n"
         "- colors → white, grey, charcoal, black accents\n"
         "- textures → smooth, matte, crisp\n"
@@ -248,6 +266,7 @@ _MODERN_ROOMS: dict[str, str] = {
     )),
     "bathroom": _room_prompt(_MODERN, (
         "Bathroom update:\n"
+        "- wall finish → smooth white or light grey paint, no texture or wallpaper\n"
         "- materials → engineered stone, glass, metal, large-format tile\n"
         "- colors → white, grey, black accents\n"
         "- textures → polished, smooth, seamless\n"
@@ -256,6 +275,7 @@ _MODERN_ROOMS: dict[str, str] = {
     )),
     "dining_room": _room_prompt(_MODERN, (
         "Dining room update:\n"
+        "- wall finish → smooth white or light grey paint, no texture or wallpaper\n"
         "- materials → glass, metal, lacquer, engineered stone\n"
         "- colors → white, grey, black, monochrome\n"
         "- textures → sleek, polished, smooth\n"
@@ -264,6 +284,7 @@ _MODERN_ROOMS: dict[str, str] = {
     )),
     "home_office": _room_prompt(_MODERN, (
         "Home office update:\n"
+        "- wall finish → smooth white or light grey paint, no texture or wallpaper\n"
         "- materials → glass, metal, lacquer, engineered surfaces\n"
         "- colors → white, grey, black\n"
         "- textures → sleek, smooth, matte\n"
@@ -272,6 +293,7 @@ _MODERN_ROOMS: dict[str, str] = {
     )),
     "entryway": _room_prompt(_MODERN, (
         "Entryway update:\n"
+        "- wall finish → smooth white or light grey paint, no texture or wallpaper\n"
         "- materials → metal, glass, lacquer, engineered stone\n"
         "- colors → white, grey, black\n"
         "- textures → sleek, smooth, polished\n"
@@ -289,6 +311,7 @@ _LUXURY = "modern luxury"
 _LUXURY_ROOMS: dict[str, str] = {
     "kitchen": _room_prompt(_LUXURY, (
         "Kitchen update:\n"
+        "- wall finish → elegant matte cream or soft charcoal paint, optional subtle panel molding, remove any existing wallpaper\n"
         "- materials → marble countertop, dark wood cabinets, brushed gold hardware\n"
         "- colors → white, black, gold accents, cream\n"
         "- textures → polished stone, rich wood grain, metallic sheen\n"
@@ -297,6 +320,7 @@ _LUXURY_ROOMS: dict[str, str] = {
     )),
     "living_room": _room_prompt(_LUXURY, (
         "Living room update:\n"
+        "- wall finish → elegant matte cream or soft charcoal paint, optional subtle panel molding, remove any existing wallpaper\n"
         "- materials → marble, velvet, premium leather, dark wood, brass\n"
         "- colors → cream, black, gold, deep green or navy accents\n"
         "- textures → polished, layered, rich fabrics, glossy-and-matte\n"
@@ -305,6 +329,7 @@ _LUXURY_ROOMS: dict[str, str] = {
     )),
     "bedroom": _room_prompt(_LUXURY, (
         "Bedroom update:\n"
+        "- wall finish → elegant matte cream or soft charcoal paint, optional subtle panel molding, remove any existing wallpaper\n"
         "- materials → velvet, silk, dark wood, marble, brass accents\n"
         "- colors → cream, gold, charcoal, deep jewel tone accents\n"
         "- textures → rich, layered, soft, polished\n"
@@ -313,6 +338,7 @@ _LUXURY_ROOMS: dict[str, str] = {
     )),
     "bathroom": _room_prompt(_LUXURY, (
         "Bathroom update:\n"
+        "- wall finish → elegant matte cream or white paint, remove any existing wallpaper\n"
         "- materials → marble, natural stone, brass, dark wood accents\n"
         "- colors → white, cream, gold, black accents\n"
         "- textures → polished stone, metallic sheen, rich grain\n"
@@ -321,6 +347,7 @@ _LUXURY_ROOMS: dict[str, str] = {
     )),
     "dining_room": _room_prompt(_LUXURY, (
         "Dining room update:\n"
+        "- wall finish → elegant matte cream or soft charcoal paint, optional subtle panel molding, remove any existing wallpaper\n"
         "- materials → marble, dark wood, velvet, brass, glass\n"
         "- colors → cream, black, gold, deep green or navy\n"
         "- textures → polished, layered, rich, glossy accents\n"
@@ -329,6 +356,7 @@ _LUXURY_ROOMS: dict[str, str] = {
     )),
     "home_office": _room_prompt(_LUXURY, (
         "Home office update:\n"
+        "- wall finish → elegant matte cream or soft charcoal paint, optional subtle panel molding, remove any existing wallpaper\n"
         "- materials → dark wood, marble, leather, brass accents\n"
         "- colors → cream, black, gold, walnut brown\n"
         "- textures → polished, rich grain, leather, metallic\n"
@@ -337,6 +365,7 @@ _LUXURY_ROOMS: dict[str, str] = {
     )),
     "entryway": _room_prompt(_LUXURY, (
         "Entryway update:\n"
+        "- wall finish → elegant matte cream or soft charcoal paint, optional subtle panel molding, remove any existing wallpaper\n"
         "- materials → marble, dark wood, brass, velvet\n"
         "- colors → cream, black, gold accents\n"
         "- textures → polished stone, rich wood, metallic sheen\n"
@@ -354,6 +383,7 @@ _WARM = "warm natural"
 _WARM_ROOMS: dict[str, str] = {
     "kitchen": _room_prompt(_WARM, (
         "Kitchen update:\n"
+        "- wall finish → warm white or soft beige paint, optional natural texture finish, remove any existing wallpaper\n"
         "- materials → warm wood, butcher block, natural stone, ceramic\n"
         "- colors → beige, warm brown, cream, olive accents\n"
         "- textures → organic grain, handcrafted tile, matte\n"
@@ -362,6 +392,7 @@ _WARM_ROOMS: dict[str, str] = {
     )),
     "living_room": _room_prompt(_WARM, (
         "Living room update:\n"
+        "- wall finish → warm white or soft beige paint, optional natural texture finish, remove any existing wallpaper\n"
         "- materials → warm wood, rattan, woven fibers, cotton, linen\n"
         "- colors → beige, brown, olive, terracotta, cream\n"
         "- textures → organic, layered textiles, handcrafted feel\n"
@@ -370,6 +401,7 @@ _WARM_ROOMS: dict[str, str] = {
     )),
     "bedroom": _room_prompt(_WARM, (
         "Bedroom update:\n"
+        "- wall finish → warm white or soft beige paint, optional natural texture finish, remove any existing wallpaper\n"
         "- materials → warm wood, rattan, cotton, linen, wool\n"
         "- colors → beige, warm brown, cream, olive, terracotta accents\n"
         "- textures → organic, layered, soft, handcrafted\n"
@@ -378,6 +410,7 @@ _WARM_ROOMS: dict[str, str] = {
     )),
     "bathroom": _room_prompt(_WARM, (
         "Bathroom update:\n"
+        "- wall finish → warm white or soft beige paint, remove any existing wallpaper\n"
         "- materials → warm wood, natural stone, terracotta tile, ceramic\n"
         "- colors → beige, warm brown, cream, olive\n"
         "- textures → organic, matte, handcrafted tile, natural grain\n"
@@ -386,6 +419,7 @@ _WARM_ROOMS: dict[str, str] = {
     )),
     "dining_room": _room_prompt(_WARM, (
         "Dining room update:\n"
+        "- wall finish → warm white or soft beige paint, optional natural texture finish, remove any existing wallpaper\n"
         "- materials → warm wood, rattan, woven fibers, linen, ceramic\n"
         "- colors → beige, brown, olive, terracotta, cream\n"
         "- textures → organic grain, handcrafted, layered naturals\n"
@@ -394,6 +428,7 @@ _WARM_ROOMS: dict[str, str] = {
     )),
     "home_office": _room_prompt(_WARM, (
         "Home office update:\n"
+        "- wall finish → warm white or soft beige paint, optional natural texture finish, remove any existing wallpaper\n"
         "- materials → warm wood, rattan, woven fibers, leather, linen\n"
         "- colors → beige, brown, olive, cream\n"
         "- textures → organic, natural grain, handcrafted\n"
@@ -402,6 +437,7 @@ _WARM_ROOMS: dict[str, str] = {
     )),
     "entryway": _room_prompt(_WARM, (
         "Entryway update:\n"
+        "- wall finish → warm white or soft beige paint, remove any existing wallpaper\n"
         "- materials → warm wood, rattan, woven fibers, natural stone\n"
         "- colors → beige, brown, cream, olive\n"
         "- textures → organic, natural grain, handcrafted\n"
@@ -417,7 +453,8 @@ _WARM_ROOMS: dict[str, str] = {
 STAGING_TEMPLATES: dict[str, str] = {
     "japanese_muji": (
         "Transform the interior into a Japanese Muji / Japandi style. "
-        "Preserve the original architecture exactly: walls, windows, doors, ceiling, and spatial structure must remain unchanged. "
+        "Preserve the original architecture exactly: wall positions, windows, doors, ceiling, and spatial structure must remain unchanged. "
+        "Wall surface finishes (paint, wallpaper, texture) should be updated to match the target style. "
         "Keep the same camera angle and perspective. "
         "Furniture can be replaced or restyled to match the design language. "
         "Update materials, colors, textures, and decorations consistently across the entire space. "
@@ -426,7 +463,8 @@ STAGING_TEMPLATES: dict[str, str] = {
     ),
     "scandinavian": (
         "Transform the interior into a Scandinavian style. "
-        "Preserve the original architecture exactly: walls, windows, doors, ceiling, and spatial structure must remain unchanged. "
+        "Preserve the original architecture exactly: wall positions, windows, doors, ceiling, and spatial structure must remain unchanged. "
+        "Wall surface finishes (paint, wallpaper, texture) should be updated to match the target style. "
         "Keep the same camera angle and perspective. "
         "Furniture can be replaced or restyled to match the design language. "
         "Update materials, colors, textures, and decorations consistently across the entire space. "
@@ -435,7 +473,8 @@ STAGING_TEMPLATES: dict[str, str] = {
     ),
     "modern_minimalist": (
         "Transform the interior into a modern minimalist style. "
-        "Preserve the original architecture exactly: walls, windows, doors, ceiling, and spatial structure must remain unchanged. "
+        "Preserve the original architecture exactly: wall positions, windows, doors, ceiling, and spatial structure must remain unchanged. "
+        "Wall surface finishes (paint, wallpaper, texture) should be updated to match the target style. "
         "Keep the same camera angle and perspective. "
         "Furniture can be replaced or restyled to match the design language. "
         "Update materials, colors, textures, and decorations consistently across the entire space. "
@@ -444,7 +483,8 @@ STAGING_TEMPLATES: dict[str, str] = {
     ),
     "modern_luxury": (
         "Transform the interior into a modern luxury style. "
-        "Preserve the original architecture exactly: walls, windows, doors, ceiling, and spatial structure must remain unchanged. "
+        "Preserve the original architecture exactly: wall positions, windows, doors, ceiling, and spatial structure must remain unchanged. "
+        "Wall surface finishes (paint, wallpaper, texture) should be updated to match the target style. "
         "Keep the same camera angle and perspective. "
         "Furniture can be replaced or restyled to match the design language. "
         "Update materials, colors, textures, and decorations consistently across the entire space. "
@@ -453,7 +493,8 @@ STAGING_TEMPLATES: dict[str, str] = {
     ),
     "warm_natural": (
         "Transform the interior into a warm natural style. "
-        "Preserve the original architecture exactly: walls, windows, doors, ceiling, and spatial structure must remain unchanged. "
+        "Preserve the original architecture exactly: wall positions, windows, doors, ceiling, and spatial structure must remain unchanged. "
+        "Wall surface finishes (paint, wallpaper, texture) should be updated to match the target style. "
         "Keep the same camera angle and perspective. "
         "Furniture can be replaced or restyled to match the design language. "
         "Update materials, colors, textures, and decorations consistently across the entire space. "
