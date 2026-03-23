@@ -21,7 +21,7 @@ from orchestrator.services.agent import agent_service
 from orchestrator.services.minimax import MiniMaxService
 from orchestrator.services.r2 import r2_service
 from orchestrator.services.render import render_service
-from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, PROMPT_PUSH_IN, PROMPT_ROTATE
+from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, PROMPT_PUSH_IN, PROMPT_PAN
 from orchestrator.line.bot import line_bot
 
 logger = logging.getLogger(__name__)
@@ -393,7 +393,7 @@ async def step_generate(state: JobState) -> None:
 
         # 客廳/廚房用 Push In，其餘用 Rotate
         camera_prompt = (
-            PROMPT_PUSH_IN if space.name in ("客廳", "廚房") else PROMPT_ROTATE
+            PROMPT_PUSH_IN if space.name in ("客廳", "廚房") else PROMPT_PAN
         )
         for idx, photo_url in enumerate(photos):
             is_last = (idx == len(photos) - 1)

@@ -15,39 +15,94 @@ MODEL_STAGING = "google/nano-banana-2/edit"
 
 # Negative prompt（shared across all Kling submissions）
 NEGATIVE_PROMPT = (
-    "Human, person, people, hand, finger, shadow of person, reflection of person, "
-    "handheld, walking, footsteps, camera shake, wobble, vibration, jitter, motion blur, "
-    "sudden movement, fast motion, jerky, shaky cam, distortion, warping, morphing, "
-    "new objects appearing, changing reflections, mirror artifacts, blurry, low quality, "
-    "unstable frame"
+    "human, person, people, hand, finger, shadow of person, "
+    "reflection of person, handheld, walking, footsteps, "
+    "camera shake, wobble, vibration, jitter, jerky, shaky cam, "
+    "motion blur, sudden movement, fast motion, abrupt acceleration, "
+    "lens breathing, rack focus, depth of field shift, "
+    "distortion, warping, morphing, fish eye, "
+    "new objects appearing, objects disappearing, "
+    "changing reflections, mirror artifacts, flickering lights, "
+    "texture swimming, surface shimmer, wall bending, "
+    "blurry, low quality, unstable frame, interlacing"
 )
 
-# Camera movement prompts
+# Camera movement prompts — v3 (scene-agnostic)
 PROMPT_PUSH_IN = (
-    "Slowly dollies forward on a perfectly straight rail toward the center of the room. "
-    "The motion is extremely smooth and constant speed. The camera is fully stabilized "
-    "with no shake. All objects remain completely static and unchanged. The geometry, "
-    "lighting, and perspective are fully consistent. No people."
+    "Cinematic architectural visualization. "
+    "Camera: slow motorized dolly forward on a straight rail "
+    "toward the center of the scene. Constant speed, perfectly "
+    "linear motion. Shot on 24mm lens, f/8, deep focus. "
+    "Every element in the scene remains completely still. "
+    "Photorealistic, 4K render quality."
 )
-PROMPT_ROTATE = (
-    "Slow horizontal pan from left to right. Fixed position, only rotating. "
-    "Perfectly stable. No people."
+PROMPT_PULL_OUT = (
+    "Cinematic architectural visualization. "
+    "Camera: slow motorized dolly backward on a straight rail, "
+    "gradually revealing the full scene. Constant speed, perfectly "
+    "linear motion. Shot on 24mm lens, f/8, deep focus. "
+    "Every element in the scene remains completely still. "
+    "Photorealistic, 4K render quality."
+)
+PROMPT_PAN = (
+    "Cinematic architectural visualization. "
+    "Camera: slow horizontal pan from left to right on a fluid "
+    "head tripod. Fixed position, rotation only. Constant angular "
+    "speed. Shot on 35mm lens, f/8, deep focus. "
+    "Every element in the scene remains completely still. "
+    "Photorealistic, 4K render quality."
 )
 PROMPT_TRUCK_LEFT = (
-    "Sliding slowly to the left on a rail, parallel to the wall. "
-    "Perfectly stable. No people."
+    "Cinematic architectural visualization. "
+    "Camera: slow lateral slide to the left on a motorized rail, "
+    "parallel to the nearest surface. Constant speed, perfectly "
+    "linear motion. Shot on 35mm lens, f/8, deep focus. "
+    "Every element in the scene remains completely still. "
+    "Photorealistic, 4K render quality."
 )
 PROMPT_TRUCK_RIGHT = (
-    "Sliding slowly to the right on a rail, parallel to the wall. "
-    "Perfectly stable. No people."
+    "Cinematic architectural visualization. "
+    "Camera: slow lateral slide to the right on a motorized rail, "
+    "parallel to the nearest surface. Constant speed, perfectly "
+    "linear motion. Shot on 35mm lens, f/8, deep focus. "
+    "Every element in the scene remains completely still. "
+    "Photorealistic, 4K render quality."
 )
 PROMPT_PEDESTAL_UP = (
-    "Rising slowly upward from a low angle. "
-    "Perfectly stable. No people."
+    "Cinematic architectural visualization. "
+    "Camera: slow vertical rise on a motorized column, starting "
+    "from a low angle. Constant speed, perfectly smooth ascent. "
+    "Shot on 24mm lens, f/8, deep focus. "
+    "Every element in the scene remains completely still. "
+    "Photorealistic, 4K render quality."
+)
+PROMPT_PEDESTAL_DOWN = (
+    "Cinematic architectural visualization. "
+    "Camera: slow vertical descent on a motorized column, starting "
+    "from a high angle. Constant speed, perfectly smooth descent. "
+    "Shot on 24mm lens, f/8, deep focus. "
+    "Every element in the scene remains completely still. "
+    "Photorealistic, 4K render quality."
 )
 PROMPT_DRONE_UP = (
     "Aerial view rising slowly upward, revealing the surroundings. "
     "Perfectly stable. No people."
+)
+PROMPT_ORBIT = (
+    "Cinematic architectural visualization. "
+    "Camera: slow orbital arc around the subject on a stabilized "
+    "gimbal, maintaining constant distance and height. Constant "
+    "angular speed, perfectly smooth circular path. Shot on 35mm "
+    "lens, f/5.6, deep focus. "
+    "Every element in the scene remains completely still. "
+    "Photorealistic, 4K render quality."
+)
+PROMPT_STATIC = (
+    "Cinematic architectural visualization. "
+    "Camera: completely static, locked-off tripod shot. Zero "
+    "camera movement. Shot on 35mm lens, f/8, deep focus. "
+    "Every element in the scene remains completely still. "
+    "Photorealistic, 4K render quality."
 )
 
 
