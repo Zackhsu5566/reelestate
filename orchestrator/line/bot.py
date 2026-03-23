@@ -151,6 +151,13 @@ class LineBot:
                     {"type": "separator"},
                     {
                         "type": "text",
+                        "text": "💡 建議上傳直式照片，最終影片為直式（9:16）",
+                        "size": "xs",
+                        "color": "#888888",
+                        "wrap": True,
+                    },
+                    {
+                        "type": "text",
                         "text": "📷 開始傳照片吧！",
                         "size": "sm",
                         "color": "#1a1a2e",

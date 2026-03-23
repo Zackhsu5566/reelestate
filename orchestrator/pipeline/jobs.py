@@ -158,8 +158,6 @@ async def pipeline_runner(job_id: str) -> None:
         if state.status == JobStatus.rendering:
             await step_render(state)
             state = await store.get(job_id)
-        if state.status == JobStatus.gate_preview:
-            return
         if state.status == JobStatus.delivering:
             await step_deliver(state)
     except Exception as e:
@@ -466,19 +464,8 @@ async def step_render(state: JobState) -> None:
     state.thumbnail_url = result.get("thumbnailUrl") or state.exterior_photo or next(
         (p for si in state.spaces_input for p in si.photos), None
     )
-    state.status = JobStatus.gate_preview
+    state.status = JobStatus.delivering
     await store.save(state)
-
-    if state.line_user_id:
-        try:
-            await line_bot.send_gate_preview(
-                chat_id=state.line_user_id,
-                job_id=state.job_id,
-                video_url=state.preview_url,
-                thumbnail_url=state.thumbnail_url,
-            )
-        except Exception as e:
-            logger.warning(f"[{state.job_id}] LINE send_gate_preview failed: {e}")
 
 
 # ── Step 4: Deliver ──
