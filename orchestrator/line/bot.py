@@ -371,11 +371,11 @@ class LineBot:
         if thumbnail_url:
             messages = [
                 self._video_message(video_url, thumbnail_url),
-                {"type": "text", "text": "🎉 影片完成！可直接下載使用。"},
+                {"type": "text", "text": "🎉 影片完成！\n💡 聊天室預覽畫質會被壓縮，建議直接下載觀看完整效果。"},
             ]
         else:
             messages = [
-                {"type": "text", "text": f"🎉 影片完成！可直接下載使用。\n{video_url}"},
+                {"type": "text", "text": f"🎉 影片完成！\n💡 聊天室預覽畫質會被壓縮，建議直接下載觀看完整效果。\n{video_url}"},
             ]
         await self._push(chat_id, messages)
 
