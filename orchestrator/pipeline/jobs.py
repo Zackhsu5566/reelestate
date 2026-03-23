@@ -195,6 +195,12 @@ async def step_analyze(state: JobState) -> None:
         spaces=state.spaces_input,
         premium=state.premium,
     )
+    # 用 spaces_input 的原始照片覆蓋 agent 回傳的 photos（LLM 容易搞混 URL）
+    for i, space in enumerate(result.spaces):
+        if i < len(state.spaces_input):
+            space.photos = state.spaces_input[i].photos
+            space.photo_count = len(space.photos)
+
     state.agent_result = result
     state.status = JobStatus.generating
     await store.save(state)

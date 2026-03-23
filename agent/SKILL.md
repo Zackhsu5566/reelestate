@@ -179,14 +179,12 @@ Orchestrator 會以 JSON 傳入：
     {
       "name": "客廳",
       "original_label": null,
-      "photo_count": 2,
-      "photos": ["https://assets.replowapp.com/jobs/abc123/photo-001.jpg", "https://assets.replowapp.com/jobs/abc123/photo-002.jpg"]
+      "photo_count": 2
     },
     {
       "name": "主臥",
       "original_label": null,
-      "photo_count": 1,
-      "photos": ["https://assets.replowapp.com/jobs/abc123/photo-003.jpg"]
+      "photo_count": 1
     }
   ],
   "meta": {
@@ -208,7 +206,7 @@ Orchestrator 會以 JSON 傳入：
 | `.name` | 空間名稱（最終顯示名稱，可能已修正，不含 "s" 後綴） |
 | `.original_label` | 原始 input label（僅在修正名稱時填入，否則為 `null`） |
 | `.photo_count` | 該空間的照片數量 |
-| `.photos` | 該空間的照片 URL 陣列（原封不動傳回） |
+| `.photos` | （不需回傳，Orchestrator 會自動填入原始照片） |
 | `meta` | 診斷資訊 |
 | `meta.agent_version` | 固定 `"3.0"` |
 | `meta.missing_fields` | 必要欄位中無法從 raw_text 取得的欄位名 |
