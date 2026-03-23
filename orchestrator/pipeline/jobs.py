@@ -448,7 +448,7 @@ async def step_generate(state: JobState) -> None:
 
 async def step_render(state: JobState) -> None:
     logger.info(f"[{state.job_id}] step_render")
-    await _notify_progress(state, "🎬 合成影片中（約 1-2 分鐘）…")
+    await _notify_progress(state, "🎬 合成影片中（約 10-20 分鐘）…")
     render_input = await _build_render_input(state)
     opening = next((s for s in render_input["scenes"] if s["type"] == "opening"), None)
     logger.info(f"[{state.job_id}] opening scene: {opening}")

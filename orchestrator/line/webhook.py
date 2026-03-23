@@ -430,8 +430,10 @@ async def _handle_postback(user_id: str, data: str) -> None:
             gate_key = f"narration_gate:{job_id}"
             if action == "approved":
                 await conv_manager._r.set(gate_key, "approved", ex=3600)
+                await line_bot.send_message(user_id, "✅ 旁白已確認，繼續生成影片...")
             elif action == "rejected":
                 await conv_manager._r.set(gate_key, "rejected", ex=3600)
+                await line_bot.send_message(user_id, "已取消旁白，繼續生成影片...")
             elif action == "edit":
                 await conv_manager._r.set(gate_key, "edit_pending", ex=3600)
                 state = await conv_manager.get(user_id)
@@ -455,6 +457,22 @@ async def _handle_postback(user_id: str, data: str) -> None:
     elif action == "reject":
         await conv_manager.set_awaiting_feedback(user_id)
         await line_bot.send_message(user_id, "請說明需要修改的地方：")
+
+
+# ── Follow handler ──
+
+
+async def _handle_follow(user_id: str) -> None:
+    """Handle follow event — auto-start registration or welcome back."""
+    profile = await user_store.get(user_id)
+    if profile:
+        # 已註冊用戶（封鎖後重新加好友）
+        await conv_manager.reset(user_id)
+        await line_bot.send_welcome(user_id)
+    else:
+        # 新用戶 → 啟動註冊
+        await conv_manager.start_registration(user_id)
+        await line_bot.send_registration_name_prompt(user_id)
 
 
 # ── Webhook endpoint ──
@@ -486,5 +504,8 @@ async def line_webhook(body: dict) -> dict:
         elif event_type == "postback":
             data = event.get("postback", {}).get("data", "")
             await _handle_postback(user_id, data)
+
+        elif event_type == "follow":
+            await _handle_follow(user_id)
 
     return {"ok": True}
