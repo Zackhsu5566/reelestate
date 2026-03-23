@@ -82,11 +82,8 @@ async def _handle_image(user_id: str, event: dict) -> None:
         return
 
     # idle / collecting_photos / awaiting_label 都可以加照片
-    was_idle = current == ConversationState.idle
-    await conv_manager.add_photo(user_id, photo_url)
-
-    if was_idle:
-        await line_bot.send_photo_started(user_id)
+    count = await conv_manager.add_photo(user_id, photo_url)
+    await line_bot.send_photo_received(user_id, count)
 
 
 # ── Text handler ──
@@ -274,7 +271,7 @@ async def _handle_text(user_id: str, text: str) -> None:
             await line_bot.send_label_prompt(user_id, count)
         else:
             await line_bot.send_message(
-                user_id, "📷 照片接收中，傳完後請輸入「完成」標記空間。"
+                user_id, "📷 照片接收中，傳完後請按「完成」標記空間。"
             )
         return
 

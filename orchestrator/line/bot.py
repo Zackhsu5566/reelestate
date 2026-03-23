@@ -172,18 +172,19 @@ class LineBot:
             [{"type": "flex", "altText": "歡迎使用 ReelEstate — 傳送照片開始", "contents": bubble}],
         )
 
-    async def send_photo_started(self, chat_id: str) -> None:
-        """收到第一張照片時的引導訊息."""
+    async def send_photo_received(self, chat_id: str, count: int) -> None:
+        """每次收到照片回覆計數 + Quick Reply「完成」按鈕."""
+        if count == 1:
+            text = "📷 開始接收照片！\n同一空間的照片請一起傳，\n傳完後按「完成」標記空間名稱。"
+        else:
+            text = f"📷 已收 {count} 張"
         await self._push(
             chat_id,
             [
                 {
                     "type": "text",
-                    "text": (
-                        "📷 開始接收照片！\n"
-                        "同一空間的照片請一起傳，\n"
-                        "傳完後輸入「完成」標記空間名稱。"
-                    ),
+                    "text": text,
+                    "quickReply": _quick_reply_items(["完成"]),
                 }
             ],
         )

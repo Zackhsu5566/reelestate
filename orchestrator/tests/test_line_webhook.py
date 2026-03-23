@@ -46,12 +46,12 @@ def mock_user_store():
 
 @pytest.mark.asyncio
 async def test_webhook_image_event(test_app, mock_conv_manager, mock_user_store):
-    """n8n forwards image event with photo_url — first photo triggers send_photo_started."""
+    """n8n forwards image event with photo_url — triggers send_photo_received with count."""
     async with AsyncClient(transport=httpx.ASGITransport(app=test_app), base_url="http://test") as client:
         with patch("orchestrator.line.webhook.conv_manager", mock_conv_manager):
             with patch("orchestrator.line.webhook.user_store", mock_user_store):
                 with patch("orchestrator.line.webhook.line_bot") as mock_bot:
-                    mock_bot.send_photo_started = AsyncMock()
+                    mock_bot.send_photo_received = AsyncMock()
                     resp = await client.post("/webhook/line", json={
                         "events": [{
                             "type": "message",
@@ -62,12 +62,12 @@ async def test_webhook_image_event(test_app, mock_conv_manager, mock_user_store)
                     })
     assert resp.status_code == 200
     mock_conv_manager.add_photo.assert_called_once_with("U1234", "https://r2.example.com/photo1.jpg")
-    mock_bot.send_photo_started.assert_called_once_with("U1234")
+    mock_bot.send_photo_received.assert_called_once_with("U1234", 1)
 
 
 @pytest.mark.asyncio
 async def test_webhook_image_during_collecting(test_app, mock_conv_manager):
-    """Second photo during collecting_photos should NOT send photo_started."""
+    """Second photo during collecting_photos sends photo_received with updated count."""
     mock_conv_manager.get.return_value = {
         "state": "collecting",
         "pending_photos": ["https://r2.example.com/p1.jpg"],
@@ -79,7 +79,7 @@ async def test_webhook_image_during_collecting(test_app, mock_conv_manager):
     async with AsyncClient(transport=httpx.ASGITransport(app=test_app), base_url="http://test") as client:
         with patch("orchestrator.line.webhook.conv_manager", mock_conv_manager):
             with patch("orchestrator.line.webhook.line_bot") as mock_bot:
-                mock_bot.send_photo_started = AsyncMock()
+                mock_bot.send_photo_received = AsyncMock()
                 resp = await client.post("/webhook/line", json={
                     "events": [{
                         "type": "message",
@@ -90,7 +90,7 @@ async def test_webhook_image_during_collecting(test_app, mock_conv_manager):
                 })
     assert resp.status_code == 200
     mock_conv_manager.add_photo.assert_called_once()
-    mock_bot.send_photo_started.assert_not_called()
+    mock_bot.send_photo_received.assert_called_once_with("U1234", 2)
 
 
 @pytest.mark.asyncio
