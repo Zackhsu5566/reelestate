@@ -151,7 +151,7 @@ class LineBot:
                     {"type": "separator"},
                     {
                         "type": "text",
-                        "text": "💡 建議上傳直式照片，最終影片為直式（9:16）",
+                        "text": "💡 建議上傳直式照片，最終影片為直式（9:16）\n💡 空間上傳順序即為影片播放順序",
                         "size": "xs",
                         "color": "#888888",
                         "wrap": True,
