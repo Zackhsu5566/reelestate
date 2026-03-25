@@ -32,6 +32,12 @@ export type POI = {
   lng?: number;
 };
 
+export type NarrationSubtitle = {
+  text: string;
+  time_begin: number; // milliseconds
+  time_end: number;   // milliseconds
+};
+
 export type SceneInput =
   | OpeningSceneInput
   | ClipSceneInput
@@ -55,6 +61,7 @@ export type VideoInput = {
   scenes: SceneInput[];
   bgm?: string;
   narration?: string;
+  narrationSubtitles?: NarrationSubtitle[];
   mapboxToken?: string;
   lat?: number;
   lng?: number;
