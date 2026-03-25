@@ -97,6 +97,7 @@ class MiniMaxService:
                 "format": "mp3",
                 "sample_rate": 32000,
             },
+            "subtitle_enable": True,
         }
         try:
             resp = await session.post(url, json=payload)
@@ -124,6 +125,7 @@ class MiniMaxService:
                     data = await resp.json()
                     status = data.get("status")
                     if status == "Success":
+                        logger.info("TTS poll success response: %s", data)
                         return data.get("file_id")
                     if status == "Failed":
                         logger.warning("TTS task failed: %s", data)
