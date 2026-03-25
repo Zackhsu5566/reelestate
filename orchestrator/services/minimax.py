@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Traditional → Simplified Chinese converter (MiniMax TTS trained on Simplified)
 _t2s = opencc.OpenCC("t2s")
+_s2t = opencc.OpenCC("s2t")
 
 # Limit parallel TTS submissions at module level so all instances share the cap
 _tts_semaphore = asyncio.Semaphore(5)
@@ -132,6 +133,11 @@ class MiniMaxService:
                         )
                 except Exception:
                     logger.exception("TTS subtitle fetch error")
+
+            # Convert subtitle text back to Traditional Chinese
+            for sub in subtitles:
+                if "text" in sub:
+                    sub["text"] = _s2t.convert(sub["text"])
 
             return (audio_bytes, subtitles)
 
