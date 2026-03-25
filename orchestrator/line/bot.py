@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 PUSH_URL = "https://api.line.me/v2/bot/message/push"
 
 # Quick Reply 空間標籤選項
-SPACE_LABELS = ["客廳", "臥室", "廚房", "浴室", "陽台", "外觀", "其他"]
+SPACE_LABELS = ["外觀", "客廳", "主臥", "次臥", "書房", "廚房", "浴室", "陽台", "工作陽台", "露台", "車庫"]
 
 
 def _quick_reply_items(labels: list[str]) -> dict:
@@ -196,7 +196,7 @@ class LineBot:
             [
                 {
                     "type": "text",
-                    "text": f"收到 {count} 張照片 ✓\n請選擇這是什麼空間：",
+                    "text": f"收到 {count} 張照片 ✓\n請選擇這是什麼空間，或直接輸入自訂名稱：",
                     "quickReply": _quick_reply_items(SPACE_LABELS),
                 }
             ],
@@ -289,7 +289,7 @@ class LineBot:
 
     async def send_info_prompt(self, chat_id: str) -> None:
         """Flex bubble: 請輸入物件資訊 + 欄位提示."""
-        fields = ["地址 / 位置", "坪數", "格局（幾房幾廳）", "樓層", "價格", "聯絡電話"]
+        fields = ["您的姓名", "地址 / 位置", "坪數", "格局（幾房幾廳）", "樓層", "價格", "聯絡電話"]
         field_rows = [
             {"type": "text", "text": f"• {f}", "size": "sm", "color": "#555555"}
             for f in fields
