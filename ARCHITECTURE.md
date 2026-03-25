@@ -189,6 +189,7 @@ ReelEstate/
 │   │   ├── components/
 │   │   │   └── SubtitleOverlay.tsx ← 字幕 overlay（sentence-level，fade in/out）
 │   │   └── compositions/
+│   │       ├── HookScene.tsx      ← 開場 hook（快速閃過 staging 圖片）
 │   │       ├── OpeningScene.tsx
 │   │       ├── ClipScene.tsx
 │   │       ├── StagingScene.tsx

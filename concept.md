@@ -178,12 +178,14 @@ OpeningScene（Mapbox 地圖動畫 → crossfade → 外觀影片）
 
 ### 影片結構
 ```
-OpeningScene（Mapbox + exteriorVideo） → [fade] → ClipScene × N（含 Staging reveal）→ [fade] → StatsScene → [fade] → CTAScene
+HookScene（前 3 張 staging 快速硬切，各 1s）→ OpeningScene（Mapbox + exteriorVideo） → [fade] → ClipScene × N（含 Staging reveal）→ [fade] → StatsScene → [fade] → CTAScene
 ```
 
 ### 轉場邏輯
 | 切換情境 | 效果 |
 |----------|------|
+| Hook 各圖之間 | 硬切（無轉場） |
+| Hook → Opening | 硬切 |
 | 同空間 clip → clip | 無轉場 |
 | 不同空間之間 | fade |
 | 最後一個 clip → Staging | wipe from-left |
@@ -194,9 +196,12 @@ OpeningScene（Mapbox + exteriorVideo） → [fade] → ClipScene × N（含 Sta
 remotion/
 ├── src/
 │   ├── Root.tsx
-│   ├── ReelEstateVideo.tsx     ← 主 composition + 轉場 + 音訊（BGM + narration）
-│   ├── types.ts
+│   ├── ReelEstateVideo.tsx     ← 主 composition + 轉場 + 音訊（BGM + narration）+ 字幕
+│   ├── types.ts               ← VideoInput（含 narrationSubtitles）
+│   ├── components/
+│   │   └── SubtitleOverlay.tsx ← 字幕 overlay
 │   └── compositions/
+│       ├── HookScene.tsx      ← 開場 hook（staging 快閃）
 │       ├── OpeningScene.tsx
 │       ├── ClipScene.tsx
 │       ├── StagingScene.tsx
@@ -342,7 +347,10 @@ Gate 2：預覽確認（LINE Push API + postback）→ 最終 MP4 → LINE
 - ✅ Remotion narration Audio track + BGM 動態音量（2026-03-21）
 - ✅ agent/SKILL.md 更新停頓標記規則（2026-03-21）
 - ✅ TTS 改用 sync endpoint + sentence-level 字幕（2026-03-25）
-- ✅ SubtitleOverlay 字幕顯示（2026-03-25）
+- ✅ SubtitleOverlay 繁體中文字幕顯示（2026-03-25）
+- ✅ HookScene 開場 staging 快閃（前 3 張，各 1s 硬切）（2026-03-25）
+- ✅ POI 間隔加長至 2 秒（2026-03-25）
+- ✅ TTS retry 機制 + timeout 300s（2026-03-25）
 
 ## 待辦
 - [ ] LINE 升輕用量方案（目前 Free 200 則/月易觸發 429）

@@ -23,7 +23,7 @@ TRANSITION_FRAMES = 15 frames（0.5s fade）
 
 ### 場景結構
 ```
-OpeningScene (含 POI) → [fade] → ClipScene × N → [fade] → StatsScene → [fade] → CTAScene
+HookScene (前3張staging快閃,各1s硬切) → OpeningScene (含 POI) → [fade] → ClipScene × N → [fade] → StatsScene → [fade] → CTAScene
 ```
 
 ### 視覺風格
