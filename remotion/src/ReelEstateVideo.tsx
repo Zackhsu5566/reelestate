@@ -3,12 +3,12 @@ import { Audio } from "@remotion/media";
 import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { wipe } from "@remotion/transitions/wipe";
-import { OpeningScene } from "./compositions/OpeningScene";
 import { ClipScene } from "./compositions/ClipScene";
 import { StagingScene } from "./compositions/StagingScene";
 import { StatsScene } from "./compositions/StatsScene";
 import { CTAScene } from "./compositions/CTAScene";
 import { HookScene } from "./compositions/HookScene";
+import { MapScene } from "./compositions/MapScene";
 import { SubtitleOverlay } from "./components/SubtitleOverlay";
 import type { VideoInput, SceneInput, StatsSceneInput } from "./types";
 
@@ -51,7 +51,7 @@ function extractHookImages(scenes: SceneInput[], max: number): string[] {
 
 /** 根據 scenes 陣列計算總 frames（含轉場扣除） */
 export function calcTotalFrames(scenes: SceneInput[]): number {
-  // Hook: staging images before opening
+  // Hook: rapid-fire staging images
   const hookImages = extractHookImages(scenes, MAX_HOOK_IMAGES);
   let total = hookImages.length * HOOK_FRAMES_PER_IMAGE;
 
@@ -112,17 +112,10 @@ export const ReelEstateVideo: React.FC<VideoInput> = (props) => {
 
     // Render scene
     switch (scene.type) {
-      case "opening":
+      case "map":
         seriesItems.push(
           <TransitionSeries.Sequence key={`s-${i}`} durationInFrames={scene.durationInFrames}>
-            <OpeningScene
-              title={title}
-              location={location}
-              address={address}
-              community={props.community}
-              propertyType={props.propertyType}
-              buildingAge={props.buildingAge}
-              floor={props.floor}
+            <MapScene
               mapboxToken={props.mapboxToken}
               lat={props.lat}
               lng={props.lng}

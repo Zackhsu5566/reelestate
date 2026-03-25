@@ -17,7 +17,7 @@ const { fontFamily } = loadFont("normal", {
 
 const MAPBOX_STYLE_ID = "beingzackhsu/cmmrh4sis008501rndfa72u92";
 
-// Exported for OpeningScene timing
+// Exported for MapScene timing
 export const FLY_DURATION_FRAMES = 120; // 4s at 30fps
 export const POI_START_FRAME = 150; // POIs appear at 5s
 
@@ -194,7 +194,6 @@ export const MapboxFlyIn: React.FC<Props> = ({
                 backdropFilter: "blur(6px)",
                 borderRadius: 10,
                 padding: "8px 18px",
-                marginBottom: 8,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -223,6 +222,15 @@ export const MapboxFlyIn: React.FC<Props> = ({
                 {poi.distance}
               </div>
             </div>
+
+            {/* Stem line */}
+            <div
+              style={{
+                width: 2,
+                height: 60,
+                background: `linear-gradient(to bottom, ${color}, rgba(255,255,255,0.3))`,
+              }}
+            />
 
             {/* Pin dot */}
             <div

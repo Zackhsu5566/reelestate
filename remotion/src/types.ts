@@ -1,5 +1,5 @@
-export type OpeningSceneInput = {
-  type: "opening";
+export type MapSceneInput = {
+  type: "map";
   durationInFrames: number;
   pois?: POI[];
 };
@@ -39,7 +39,7 @@ export type NarrationSubtitle = {
 };
 
 export type SceneInput =
-  | OpeningSceneInput
+  | MapSceneInput
   | ClipSceneInput
   | StatsSceneInput
   | CTASceneInput;

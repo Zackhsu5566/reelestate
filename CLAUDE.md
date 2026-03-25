@@ -14,8 +14,8 @@
 
 ### 時間配置（常數）
 ```
-OPENING_FRAMES  = 10s = 300 frames（含 POI 生活機能）
 CLIP_FRAMES     =  5s = 150 frames（每個房間）
+MAP_FRAMES      = 10s = 300 frames（地圖飛入 + POI 生活機能）
 STATS_FRAMES    = 7s = 210 frames
 CTA_FRAMES      =  3s = 90 frames
 TRANSITION_FRAMES = 15 frames（0.5s fade）
@@ -23,7 +23,7 @@ TRANSITION_FRAMES = 15 frames（0.5s fade）
 
 ### 場景結構
 ```
-HookScene (前3張staging快閃,各1s硬切) → OpeningScene (含 POI) → [fade] → ClipScene × N → [fade] → StatsScene → [fade] → CTAScene
+HookScene (前3張staging快閃,各1s硬切) → ClipScene × N → [fade] → MapScene (地圖+POI) → [fade] → StatsScene → [fade] → CTAScene
 ```
 
 ### 視覺風格

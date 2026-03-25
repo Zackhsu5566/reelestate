@@ -48,15 +48,15 @@ const defaultProps: VideoInput = {
   line: "wang_realestate",
   agentName: "王小明 | 信義房屋",
   scenes: [
-    { type: "opening", durationInFrames: 300, pois: [
-      { name: "信義安和站", category: "mrt", distance: "步行3分鐘", lat: 25.0410, lng: 121.5530 },
-      { name: "全聯福利中心", category: "supermarket", distance: "步行5分鐘", lat: 25.0470, lng: 121.5680 },
-      { name: "大安森林公園", category: "park", distance: "步行10分鐘", lat: 25.0380, lng: 121.5580 },
-    ]},
     { type: "clip", src: "clips/exterior.mp4", label: "外觀", durationInFrames: 150 },
     { type: "clip", src: "clips/living-room-reversed.mp4", label: "客廳", durationInFrames: 150, stagingImage: "images/staging-living-room.png" },
     { type: "clip", src: "clips/kitchen-reversed.mp4", label: "廚房", durationInFrames: 150, stagingImage: "images/staging-kitchen.jpg" },
     { type: "clip", src: "clips/bedroom-s.mp4", label: "房間", durationInFrames: 105 },
+    { type: "map", durationInFrames: 300, pois: [
+      { name: "信義安和站", category: "mrt", distance: "步行3分鐘", lat: 25.0410, lng: 121.5530 },
+      { name: "全聯福利中心", category: "supermarket", distance: "步行5分鐘", lat: 25.0470, lng: 121.5680 },
+      { name: "大安森林公園", category: "park", distance: "步行10分鐘", lat: 25.0380, lng: 121.5580 },
+    ]},
     { type: "stats", durationInFrames: 220, backgroundSrc: "images/exterior-bg.webp" },
     { type: "cta", durationInFrames: 90, backgroundSrc: "images/exterior-bg.webp" },
   ],

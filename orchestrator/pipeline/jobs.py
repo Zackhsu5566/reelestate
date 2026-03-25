@@ -471,8 +471,8 @@ async def step_render(state: JobState) -> None:
     logger.info(f"[{state.job_id}] step_render")
     await _notify_progress(state, "🎬 合成影片中（約 10-20 分鐘）…")
     render_input = await _build_render_input(state)
-    opening = next((s for s in render_input["scenes"] if s["type"] == "opening"), None)
-    logger.info(f"[{state.job_id}] opening scene: {opening}")
+    map_s = next((s for s in render_input["scenes"] if s["type"] == "map"), None)
+    logger.info(f"[{state.job_id}] map scene: {map_s}")
 
     if state.preview_render_job_id:
         # Crash recovery
@@ -514,7 +514,7 @@ async def step_deliver(state: JobState) -> None:
 
 # ── Build RenderInput ──
 
-OPENING_FRAMES = 450  # 15s
+MAP_FRAMES = 300  # 10s — map fly-in + POI markers
 CLIP_FRAMES = 120  # 4s (video 1.25x speed)
 CLIP_SMALL_FRAMES = 84  # 2.8s (video 1.25x speed)
 STATS_FRAMES = 210  # 7s — enough for 5 items stagger animation + hold
@@ -621,11 +621,14 @@ async def _build_render_input(state: JobState) -> dict:
             if coords:
                 poi.lat, poi.lng = coords
 
-    # Opening scene
-    opening_scene: dict = {"type": "opening", "durationInFrames": OPENING_FRAMES}
+    # Map scene (POI) — inserted before stats later
+    map_scene: dict | None = None
     if prop.pois:
-        opening_scene["pois"] = [p.model_dump() for p in prop.pois]
-    scenes.append(opening_scene)
+        map_scene = {
+            "type": "map",
+            "durationInFrames": MAP_FRAMES,
+            "pois": [p.model_dump() for p in prop.pois],
+        }
 
     # Exterior video (separate clip after opening)
     exterior_task = state.asset_tasks.get("clip:exterior")
@@ -682,6 +685,8 @@ async def _build_render_input(state: JobState) -> dict:
                 bg_src = photos[0]
                 break
 
+    if map_scene:
+        scenes.append(map_scene)
     scenes.append({"type": "stats", "durationInFrames": STATS_FRAMES, **({"backgroundSrc": bg_src} if bg_src else {})})
     scenes.append({"type": "cta", "durationInFrames": CTA_FRAMES, **({"backgroundSrc": bg_src} if bg_src else {})})
 
