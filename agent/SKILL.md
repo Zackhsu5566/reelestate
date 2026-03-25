@@ -115,16 +115,17 @@ Orchestrator 會以 JSON 傳入：
 （報價 + 邀請聯繫，暖收尾。用「歡迎聯繫我」，不要帶房仲姓名）
 ```
 
-**空間名稱修正（`name` / `original_label`）**
-- 若房仲的 `label` 明顯錯誤（如標「房間」但根據上下文判斷是浴室），修正 `name` 為正確名稱，並將原始 label 存入 `original_label`
-- 若不需修正，`name` = 原始 label，`original_label` = `null`
+**空間名稱規則（`name` / `original_label`）**
+- **`name` 必須保持與輸入的 `label` 完全一致**，不得自行重新命名或消歧義（例如：兩個「臥室」就保持兩個「臥室」，不要改成「主臥」「次臥」）
+- `original_label` 固定為 `null`
 - **注意**：Orchestrator 送入的 `label` 已去除 "s" 後綴（如 `客廳s` → `客廳`），`name` 欄位不應包含 "s" 後綴
 
 **Section marker 規則：**
 - `[OPENING]`、`[STATS]`、`[CTA]` 固定存在
 - 中間按 `spaces` 順序，每個空間一個 `[空間名]` marker
-- **marker 必須使用 `name`**（修正後的名稱），不是原始 label
-- marker 本身不會被念出，只用來切分 ForcedAligner 區間
+- **marker 必須使用 `name`**（即原始 label）
+- 若有重複名稱，marker 也照樣重複（例如兩個 `[臥室]`），TTS 會自動移除 marker
+- marker 本身不會被念出
 
 **防幻覺規則：**
 - 空間描述**只能**根據 `raw_text` 中明確提到的資訊撰寫
