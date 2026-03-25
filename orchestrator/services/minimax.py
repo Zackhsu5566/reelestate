@@ -30,7 +30,7 @@ class MiniMaxService:
         api_key: str,
         group_id: str,
         poll_interval: float = 3.0,
-        poll_timeout: float = 120.0,
+        poll_timeout: float = 300.0,
     ) -> None:
         self.api_key = api_key
         self.group_id = group_id
@@ -50,13 +50,21 @@ class MiniMaxService:
         return _SECTION_MARKER_RE.sub("", text).strip()
 
     async def synthesize(self, narration_text: str) -> bytes | None:
-        """Full TTS pipeline. Returns audio bytes or None on any failure."""
+        """Full TTS pipeline with 1 retry. Returns audio bytes or None on failure."""
         async with _tts_semaphore:
-            try:
-                return await self._synthesize_inner(narration_text)
-            except Exception:
-                logger.exception("TTS synthesis failed")
-                return None
+            for attempt in range(2):
+                try:
+                    result = await self._synthesize_inner(narration_text)
+                    if result is not None:
+                        return result
+                    if attempt == 0:
+                        logger.warning("TTS attempt 1 failed, retrying in 5s...")
+                        await asyncio.sleep(5)
+                except Exception:
+                    logger.exception("TTS synthesis failed (attempt %d)", attempt + 1)
+                    if attempt == 0:
+                        await asyncio.sleep(5)
+            return None
 
     async def _synthesize_inner(self, narration_text: str) -> bytes | None:
         text = self._strip_markers(narration_text)
