@@ -8,6 +8,7 @@ import { ClipScene } from "./compositions/ClipScene";
 import { StagingScene } from "./compositions/StagingScene";
 import { StatsScene } from "./compositions/StatsScene";
 import { CTAScene } from "./compositions/CTAScene";
+import { SubtitleOverlay } from "./components/SubtitleOverlay";
 import type { VideoInput, SceneInput, StatsSceneInput } from "./types";
 
 export const FADE_FRAMES = 10;       // ~0.33s fade between scenes
@@ -73,6 +74,7 @@ export const ReelEstateVideo: React.FC<VideoInput> = (props) => {
   const {
     title, location, address, size, layout, floor,
     price, contact, line, agentName, scenes, bgm, narration,
+    narrationSubtitles,
   } = props;
 
   const seriesItems: React.ReactNode[] = [];
@@ -193,6 +195,9 @@ export const ReelEstateVideo: React.FC<VideoInput> = (props) => {
       {bgm && <Audio src={staticFile(bgm)} volume={narration ? BGM_VOLUME_WITH_NARRATION : BGM_VOLUME} loop />}
       {/* Narration voice-over — full volume, no loop */}
       {narration && <Audio src={staticFile(narration)} volume={NARRATION_VOLUME} />}
+      {narrationSubtitles && narrationSubtitles.length > 0 && (
+        <SubtitleOverlay subtitles={narrationSubtitles} />
+      )}
     </AbsoluteFill>
   );
 };
