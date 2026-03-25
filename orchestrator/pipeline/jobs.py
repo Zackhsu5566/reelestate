@@ -112,11 +112,13 @@ async def _task_tts(
     )
 
     # Run TTS
-    audio_bytes = await minimax.synthesize(final_text)
-    if not audio_bytes:
+    result = await minimax.synthesize(final_text)
+    if not result:
         logger.warning("TTS failed, degrading to no narration: job=%s", job_id)
         await store.update_narration(job_id, narration_url=None)
         return
+
+    audio_bytes, subtitles = result
 
     # Log duration (observability)
     try:
@@ -134,10 +136,25 @@ async def _task_tts(
     except Exception:
         pass  # observability only
 
-    # Upload to R2
+    # Upload audio to R2
     r2_key = f"audio/{job_id}/narration.mp3"
     narration_url = await r2.upload_bytes(audio_bytes, r2_key, "audio/mpeg")
-    await store.update_narration(job_id, narration_url=narration_url)
+
+    # Upload subtitles to R2
+    subtitles_url = None
+    if subtitles:
+        import json as _json
+        sub_key = f"audio/{job_id}/subtitles.json"
+        subtitles_url = await r2.upload_bytes(
+            _json.dumps(subtitles).encode(), sub_key, "application/json"
+        )
+
+    await store.update_narration(
+        job_id,
+        narration_url=narration_url,
+        narration_subtitles=subtitles,
+        narration_subtitles_url=subtitles_url,
+    )
 
 
 # ── Main pipeline runner ──
@@ -700,5 +717,7 @@ async def _build_render_input(state: JobState) -> dict:
         render_input["bgm"] = settings.bgm_url
     if state.narration_url:
         render_input["narration"] = state.narration_url
+    if state.narration_subtitles:
+        render_input["narrationSubtitles"] = state.narration_subtitles
 
     return render_input
