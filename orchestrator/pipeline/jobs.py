@@ -515,7 +515,7 @@ async def step_deliver(state: JobState) -> None:
 # ── Build RenderInput ──
 
 MAP_FRAMES = 300  # 10s — map fly-in + POI markers
-CLIP_FRAMES = 120  # 4s (video 1.25x speed)
+CLIP_FRAMES = 105  # 3.5s (video 1.25x speed)
 CLIP_SMALL_FRAMES = 84  # 2.8s (video 1.25x speed)
 STATS_FRAMES = 210  # 7s — enough for 5 items stagger animation + hold
 CTA_FRAMES = 150  # 5s
