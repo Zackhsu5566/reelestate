@@ -31,7 +31,7 @@ flowchart TD
     end
 
     subgraph Services["外部服務（FastAPI 直接呼叫）"]
-        TTS["MiniMax TTS\nspeech-2.8-hd\n~120s"]
+        TTS["MiniMax TTS\nspeech-2.8-hd (sync t2a_v2)\n含字幕"]
         WS_Stage["WaveSpeed\nnano-banana-2/edit\n~38s"]
         WS_Kling["WaveSpeed\nkling-v2.5-turbo-pro\n~95s / clip"]
         R2["Cloudflare R2\nassets.replowapp.com"]
@@ -86,7 +86,7 @@ flowchart TD
 | ① | LINE → n8n → FastAPI | 對話狀態機收集照片 + 空間標記 + 物件資訊 |
 | ② | FastAPI → Agent | 分析照片（VLM）+ 生成講稿 |
 | ③ | FastAPI → LINE（Gate 1） | 推講稿，等用戶確認/修改/拒絕（10 分鐘 timeout → 自動通過） |
-| ④ | FastAPI → MiniMax | TTS 生成 narration.mp3（失敗降級） |
+| ④ | FastAPI → MiniMax | TTS 生成 narration.mp3 + subtitles.json（失敗降級） |
 | ⑤ | FastAPI → WaveSpeed（平行） | 虛擬裝潢 + Kling 影片 |
 | ⑥ | FastAPI → R2 | 上傳所有素材 |
 | ⑦ | FastAPI → VPS | POST /render，輪詢結果 |
@@ -108,6 +108,8 @@ job:{id}:
   narration_enabled: bool       ← 用戶是否選擇旁白
   narration_text: str           ← Agent 生成的講稿
   narration_url: str            ← TTS 生成後上傳 R2 的 URL
+  narration_subtitles: [...]    ← sentence-level 字幕（time_begin/time_end ms）
+  narration_subtitles_url: str  ← 字幕 JSON 上傳 R2 的 URL
   chosen_style: str             ← 用戶選的裝潢風格
   errors: [...]
 
@@ -138,7 +140,7 @@ narration_gate:{job_id}:
 |------|----------|------|
 | LINE Messaging API | `https://api.line.me/v2/bot/message/push` | `Bearer <channel_access_token>` |
 | WaveSpeed API | `https://api.wavespeed.ai/api/v3/` | `Bearer <key>` |
-| MiniMax TTS | `https://api.minimaxi.chat/v1` | `Bearer <api_key>` + GroupId |
+| MiniMax TTS | `https://api.minimaxi.chat/v1/t2a_v2` (sync) | `Bearer <api_key>` + GroupId |
 | VPS Render | `https://render.replowapp.com` | `Bearer reelestate-render-token-2024` |
 | R2 Proxy | `reelestate-r2-proxy.beingzackhsu.workers.dev` | `X-Upload-Token` |
 | R2 CDN | `assets.replowapp.com` | 公開讀取 |
@@ -162,7 +164,7 @@ ReelEstate/
 │   │   ├── wavespeed.py         ← WaveSpeed API wrapper
 │   │   ├── render.py            ← VPS render wrapper
 │   │   ├── r2.py                ← R2 上傳 wrapper
-│   │   └── minimax.py           ← MiniMax TTS wrapper（aiohttp，semaphore(5)）
+│   │   └── minimax.py           ← MiniMax TTS wrapper（sync t2a_v2 + subtitle，aiohttp，semaphore(5)）
 │   ├── stores/
 │   │   └── user.py              ← UserStore（Redis Hash + Lua quota）
 │   ├── line/
@@ -182,8 +184,10 @@ ReelEstate/
 ├── remotion/
 │   ├── src/
 │   │   ├── Root.tsx
-│   │   ├── ReelEstateVideo.tsx  ← 主 composition + 轉場 + BGM/narration 音訊
-│   │   ├── types.ts             ← VideoInput（含 narration?: string）
+│   │   ├── ReelEstateVideo.tsx  ← 主 composition + 轉場 + BGM/narration 音訊 + 字幕
+│   │   ├── types.ts             ← VideoInput（含 narration + narrationSubtitles）
+│   │   ├── components/
+│   │   │   └── SubtitleOverlay.tsx ← 字幕 overlay（sentence-level，fade in/out）
 │   │   └── compositions/
 │   │       ├── OpeningScene.tsx
 │   │       ├── ClipScene.tsx
@@ -196,7 +200,7 @@ ReelEstate/
 │       ├── render-handler.ts
 │       ├── renderer.ts
 │       ├── assets.ts            ← 下載素材（含 narration）
-│       ├── types.ts             ← RenderInput（含 narration?: string）
+│       ├── types.ts             ← RenderInput（含 narration + narrationSubtitles）
 │       └── uploader.ts
 └── agent/
     └── SKILL.md                 ← Claude Agent 系統提示詞

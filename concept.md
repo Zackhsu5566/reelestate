@@ -103,10 +103,15 @@ user:{line_user_id} → {
 ```
 Gate 1：房仲確認/修改/拒絕講稿
      ↓ 通過 or 修改後
-MiniMax T2A → narration.mp3 → 上傳 R2
+MiniMax T2A (sync t2a_v2, subtitle_enable=true)
+     → narration.mp3 + subtitles.json → 上傳 R2
      ↓ 失敗 → 降級（無旁白繼續）
-Remotion render（BGM 有旁白時降音至 0.05）
+Remotion render（BGM 有旁白時降音至 0.05 + SubtitleOverlay 字幕）
 ```
+
+### 字幕
+MiniMax sync endpoint 回傳 sentence-level 字幕（JSON array），每句含 `time_begin` / `time_end`（毫秒）。
+Remotion `SubtitleOverlay` 根據時間戳顯示字幕，底部居中半透明黑底白字。
 
 ### 音訊設定
 | 項目 | 值 |
@@ -223,6 +228,9 @@ remotion/
   "exteriorVideo": "https://assets.replowapp.com/jobs/xxx/exterior.mp4",
   "bgm": "https://assets.replowapp.com/bgm.mp3",
   "narration": "https://assets.replowapp.com/jobs/xxx/narration.mp3",
+  "narrationSubtitles": [
+    {"text": "...", "time_begin": 0, "time_end": 5612.1}
+  ],
   "scenes": [
     { "type": "opening", "durationInFrames": 450 },
     { "type": "clip", "src": "jobs/xxx/clips/客廳1.mp4", "label": "客廳", "durationInFrames": 150 },
@@ -248,6 +256,7 @@ remotion/
 | 空間標籤 | 半透明毛玻璃，左下角 |
 | 虛擬裝潢 badge | 金色（#FFD700），右上角 |
 | 音訊 | TTS 旁白（1.0）+ BGM（0.05 有旁白 / 0.15 無旁白） |
+| 字幕 | sentence-level，底部居中半透明黑底白字，fade in/out |
 
 ## 自動化架構
 
@@ -316,7 +325,7 @@ Gate 2：預覽確認（LINE Push API + postback）→ 最終 MP4 → LINE
 
 - ~~Worker A（Qwen Edit）~~ → WaveSpeed `qwen-image/edit-multiple-angles`
 - ~~Worker B（Wan 2.2）~~ → WaveSpeed Kling V2.5 Turbo Pro
-- ~~Worker C（TTS + ForcedAligner）~~ → MiniMax T2A，ForcedAligner 不再需要
+- ~~Worker C（TTS + ForcedAligner）~~ → MiniMax T2A sync（含 subtitle），ForcedAligner 不再需要
 - ~~Worker D（Z-Image + Upscale）~~ → WaveSpeed `nano-banana-2/edit`
 
 ## 目前進度
@@ -332,6 +341,8 @@ Gate 2：預覽確認（LINE Push API + postback）→ 最終 MP4 → LINE
 - ✅ BGM + narration 注入 render input（2026-03-21）
 - ✅ Remotion narration Audio track + BGM 動態音量（2026-03-21）
 - ✅ agent/SKILL.md 更新停頓標記規則（2026-03-21）
+- ✅ TTS 改用 sync endpoint + sentence-level 字幕（2026-03-25）
+- ✅ SubtitleOverlay 字幕顯示（2026-03-25）
 
 ## 待辦
 - [ ] LINE 升輕用量方案（目前 Free 200 則/月易觸發 429）
