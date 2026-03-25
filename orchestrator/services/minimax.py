@@ -1,11 +1,10 @@
-"""MiniMax Text-to-Speech service wrapper (async, t2a_async_v2 API)."""
+"""MiniMax Text-to-Speech service wrapper (sync t2a_v2 API with subtitles)."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import re
-import time
 
 import aiohttp
 import opencc
@@ -49,8 +48,8 @@ class MiniMaxService:
         """Remove [SECTION_NAME] markers; preserve pause markers like <#1.0#>."""
         return _SECTION_MARKER_RE.sub("", text).strip()
 
-    async def synthesize(self, narration_text: str) -> bytes | None:
-        """Full TTS pipeline with 1 retry. Returns audio bytes or None on failure."""
+    async def synthesize(self, narration_text: str) -> tuple[bytes, list[dict]] | None:
+        """Full TTS pipeline with 1 retry. Returns (audio_bytes, subtitles) or None."""
         async with _tts_semaphore:
             for attempt in range(2):
                 try:
@@ -66,25 +65,14 @@ class MiniMaxService:
                         await asyncio.sleep(5)
             return None
 
-    async def _synthesize_inner(self, narration_text: str) -> bytes | None:
+    async def _synthesize_inner(
+        self, narration_text: str
+    ) -> tuple[bytes, list[dict]] | None:
         text = self._strip_markers(narration_text)
         text = _t2s.convert(text)
         session = await self._get_session()
 
-        task_id = await self._create_task(session, text)
-        if not task_id:
-            return None
-
-        audio_file_id = await self._poll_task(session, task_id)
-        if not audio_file_id:
-            return None
-
-        return await self._download_audio(session, audio_file_id)
-
-    async def _create_task(
-        self, session: aiohttp.ClientSession, text: str
-    ) -> str | None:
-        url = f"{_BASE_URL}/t2a_async_v2?GroupId={self.group_id}"
+        url = f"{_BASE_URL}/t2a_v2?GroupId={self.group_id}"
         payload = {
             "model": "speech-2.8-hd",
             "text": text,
@@ -99,57 +87,57 @@ class MiniMaxService:
             },
             "subtitle_enable": True,
         }
-        try:
-            resp = await session.post(url, json=payload)
-            if resp.status == 200:
-                data = await resp.json()
-                task_id = data.get("task_id")
-                if not task_id:
-                    logger.warning("TTS create task: no task_id in response: %s", data)
-                return task_id
-            body = await resp.text()
-            logger.warning("TTS create task failed: status=%d body=%s", resp.status, body[:200])
-        except Exception:
-            logger.exception("TTS create task error")
-        return None
 
-    async def _poll_task(
-        self, session: aiohttp.ClientSession, task_id: str
-    ) -> str | None:
-        url = f"{_BASE_URL}/query/t2a_async_query_v2?task_id={task_id}"
-        deadline = time.monotonic() + self.poll_timeout
-        while time.monotonic() < deadline:
-            try:
-                resp = await session.get(url)
-                if resp.status == 200:
-                    data = await resp.json()
-                    status = data.get("status")
-                    if status == "Success":
-                        logger.info("TTS poll success response: %s", data)
-                        return data.get("file_id")
-                    if status == "Failed":
-                        logger.warning("TTS task failed: %s", data)
-                        return None
-            except Exception:
-                logger.exception("TTS poll error")
-            await asyncio.sleep(self.poll_interval)
-        logger.warning("TTS poll timeout after %.0fs", self.poll_timeout)
-        return None
+        timeout = aiohttp.ClientTimeout(total=self.poll_timeout)
 
-    async def _download_audio(
-        self, session: aiohttp.ClientSession, file_id: str
-    ) -> bytes | None:
-        url = f"{_BASE_URL}/files/retrieve_content?file_id={file_id}"
         try:
-            resp = await session.get(url)
-            if resp.status == 200:
-                data = await resp.read()
-                if data:
-                    return data
-                logger.warning("TTS download: empty audio")
+            resp = await session.post(url, json=payload, timeout=timeout)
+            if resp.status != 200:
+                body = await resp.text()
+                logger.warning(
+                    "TTS sync request failed: status=%d body=%s",
+                    resp.status,
+                    body[:200],
+                )
+                return None
+
+            data = await resp.json()
+            base_resp = data.get("base_resp", {})
+            if base_resp.get("status_code", -1) != 0:
+                logger.warning(
+                    "TTS sync API error: %s",
+                    base_resp.get("status_msg", "unknown"),
+                )
+                return None
+
+            audio_hex = data.get("data", {}).get("audio")
+            subtitle_url = data.get("data", {}).get("subtitle_file")
+
+            if not audio_hex:
+                logger.warning("TTS sync response missing audio data")
+                return None
+
+            audio_bytes = bytes.fromhex(audio_hex)
+
+            # Fetch subtitle JSON
+            subtitles: list[dict] = []
+            if subtitle_url:
+                try:
+                    sub_resp = await session.get(subtitle_url, timeout=timeout)
+                    if sub_resp.status == 200:
+                        subtitles = await sub_resp.json()
+                    else:
+                        logger.warning(
+                            "TTS subtitle fetch failed: status=%d", sub_resp.status
+                        )
+                except Exception:
+                    logger.exception("TTS subtitle fetch error")
+
+            return (audio_bytes, subtitles)
+
         except Exception:
-            logger.exception("TTS download error")
-        return None
+            logger.exception("TTS sync request error")
+            return None
 
     async def close(self) -> None:
         if self._session and not self._session.closed:
