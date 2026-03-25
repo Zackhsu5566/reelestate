@@ -13,8 +13,8 @@ export interface Job {
 }
 
 // Scene types matching src/types.ts but with URLs instead of local paths
-export interface OpeningScene {
-  type: "opening";
+export interface MapScene {
+  type: "map";
   durationInFrames: number;
   pois?: POI[];
 }
@@ -45,7 +45,7 @@ export interface CTAScene {
   backgroundSrc?: string;
 }
 
-export type SceneInput = OpeningScene | ClipScene | StatsScene | CTAScene;
+export type SceneInput = MapScene | ClipScene | StatsScene | CTAScene;
 
 export interface RenderInput {
   title: string;
@@ -60,7 +60,7 @@ export interface RenderInput {
   scenes: SceneInput[];
   bgm?: string; // URL
   narration?: string; // URL
-  // Map / OpeningScene fields (optional)
+  // MapScene fields (optional)
   community?: string;
   propertyType?: string;
   buildingAge?: string;
@@ -136,7 +136,7 @@ export function validateRenderRequest(body: unknown): {
     if (!scene.type) {
       return { valid: false, error: `scenes[${i}].type is required` };
     }
-    if (!["opening", "clip", "stats", "cta"].includes(scene.type as string)) {
+    if (!["map", "clip", "stats", "cta"].includes(scene.type as string)) {
       return { valid: false, error: `scenes[${i}].type "${scene.type}" is invalid` };
     }
     if (typeof scene.durationInFrames !== "number" || scene.durationInFrames <= 0) {

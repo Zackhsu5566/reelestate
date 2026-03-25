@@ -471,8 +471,8 @@ async def step_render(state: JobState) -> None:
     logger.info(f"[{state.job_id}] step_render")
     await _notify_progress(state, "🎬 合成影片中（約 10-20 分鐘）…")
     render_input = await _build_render_input(state)
-    opening_s = next((s for s in render_input["scenes"] if s["type"] == "opening"), None)
-    logger.info(f"[{state.job_id}] opening scene: {opening_s}")
+    map_s = next((s for s in render_input["scenes"] if s["type"] == "map"), None)
+    logger.info(f"[{state.job_id}] map scene: {map_s}")
 
     if state.preview_render_job_id:
         # Crash recovery
@@ -621,15 +621,16 @@ async def _build_render_input(state: JobState) -> dict:
             if coords:
                 poi.lat, poi.lng = coords
 
-    # Opening scene (map fly-in + POI) — inserted at front of scenes
-    opening_scene: dict = {
-        "type": "opening",
-        "durationInFrames": MAP_FRAMES,
-    }
+    # Map scene (POI) — inserted before stats later
+    map_scene: dict | None = None
     if prop.pois:
-        opening_scene["pois"] = [p.model_dump() for p in prop.pois]
+        map_scene = {
+            "type": "map",
+            "durationInFrames": MAP_FRAMES,
+            "pois": [p.model_dump() for p in prop.pois],
+        }
 
-    # Exterior video (separate clip after opening)
+    # Exterior video
     exterior_task = state.asset_tasks.get("clip:exterior")
     if exterior_task and exterior_task.status == "completed":
         scenes.append({
@@ -684,8 +685,8 @@ async def _build_render_input(state: JobState) -> dict:
                 bg_src = photos[0]
                 break
 
-    # Opening at front, then stats/cta at end
-    scenes.insert(0, opening_scene)
+    if map_scene:
+        scenes.append(map_scene)
     scenes.append({"type": "stats", "durationInFrames": STATS_FRAMES, **({"backgroundSrc": bg_src} if bg_src else {})})
     scenes.append({"type": "cta", "durationInFrames": CTA_FRAMES, **({"backgroundSrc": bg_src} if bg_src else {})})
 
