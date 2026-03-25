@@ -6,6 +6,8 @@ import asyncio
 import logging
 import re
 
+import json as _json
+
 import aiohttp
 import opencc
 
@@ -126,7 +128,8 @@ class MiniMaxService:
                 try:
                     sub_resp = await session.get(subtitle_url, timeout=timeout)
                     if sub_resp.status == 200:
-                        subtitles = await sub_resp.json(content_type=None)
+                        raw = await sub_resp.read()
+                        subtitles = _json.loads(raw.decode("utf-8"))
                     else:
                         logger.warning(
                             "TTS subtitle fetch failed: status=%d", sub_resp.status
