@@ -125,7 +125,7 @@ class MiniMaxService:
                 try:
                     sub_resp = await session.get(subtitle_url, timeout=timeout)
                     if sub_resp.status == 200:
-                        subtitles = await sub_resp.json()
+                        subtitles = await sub_resp.json(content_type=None)
                     else:
                         logger.warning(
                             "TTS subtitle fetch failed: status=%d", sub_resp.status
