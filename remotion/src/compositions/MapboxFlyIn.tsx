@@ -21,7 +21,7 @@ const MAPBOX_STYLE_ID = "beingzackhsu/cmmrh4sis008501rndfa72u92";
 export const FLY_DURATION_FRAMES = 120; // 4s at 30fps
 export const POI_START_FRAME = 150; // POIs appear at 5s
 
-const POI_STAGGER = 45; // ~1.5s between each POI
+const POI_STAGGER = 60; // 2s between each POI
 const POI_ANIM_FRAMES = 15; // ~0.5s animation duration
 
 const CATEGORY_COLORS: Record<POI["category"], string> = {
