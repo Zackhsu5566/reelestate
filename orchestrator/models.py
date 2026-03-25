@@ -125,6 +125,8 @@ class JobState(BaseModel):
     narration_text: str | None = None
     narration_task_id: str | None = None
     narration_url: str | None = None
+    narration_subtitles: list[dict] | None = None
+    narration_subtitles_url: str | None = None
 
     # Errors
     errors: list[str] = []

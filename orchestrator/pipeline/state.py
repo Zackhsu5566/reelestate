@@ -77,6 +77,7 @@ class JobStore:
     _NARRATION_FIELDS = {
         "narration_enabled", "narration_gate_status",
         "narration_text", "narration_task_id", "narration_url",
+        "narration_subtitles", "narration_subtitles_url",
     }
 
     async def update_narration(self, job_id: str, **fields) -> None:
