@@ -23,27 +23,79 @@
 講稿帶有 `[OPENING]`、`[空間名]`、`[MAP]`、`[STATS]`、`[CTA]` 等 marker。
 
 對應策略：
-1. 送 TTS 前，按 marker 拆分講稿，記錄每段文字（marker 本身被 MiniMax 忽略）
-2. 拿到字幕後，逐句文字比對，將字幕分配到對應 section
-3. 每個 section 的音訊範圍 = 第一句 `time_begin` ~ 最後一句 `time_end`
+1. 送 TTS 前，按 marker 拆分講稿，記錄每段的原始文字及其在完整文本中的**字元位移**（start_char, end_char）
+2. Strip markers 和 `<#秒數#>` pause markers 後得到純文字，送 MiniMax
+3. 拿到字幕後，用**累計字元位移**分配：每句字幕的文字在純文本中有對應位置，根據位置落在哪個 section 的 char range 來歸類
+4. 每個 section 的音訊範圍 = 第一句 `time_begin` ~ 最後一句 `time_end`
+
+> 為什麼用字元位移而非逐句比對：MiniMax 的斷句方式可能與原始段落不同（合句、拆句），繁簡轉換也會影響文字。字元位移更穩健。
 
 Scene mapping：
 
 | Section Marker | 對應場景 | 起始時間 |
 |---|---|---|
 | `[OPENING]` | HookScene 開頭（frame 0） | 0ms |
-| `[空間名]` | 對應的 ClipScene | 根據前面場景累計 |
+| `[空間名]` | 該空間**第一個** ClipScene 的起始 frame | 根據前面場景累計 |
 | `[MAP]` | MapScene | 同上 |
 | `[STATS]` | StatsScene | 同上 |
 | `[CTA]` | CTAScene | 同上 |
 
+**一個空間多個 clip 的處理**：`[客廳]` 的旁白從該空間第一個 clip 開始播放。若空間有多個 clip + staging，旁白的可用時長 = 所有 clip 的 durationInFrames + HOLD_FRAMES + STAGING_FRAMES - 各轉場 overlap。
+
 ### 場景起始時間計算
 
-遍歷 scenes 陣列，累計每個場景的起始 frame，需考慮：
-- HookScene: `hookImages.length * HOOK_FRAMES_PER_IMAGE`（30 frames/image）
-- 每個 scene 的 `durationInFrames`
-- Staging: `HOLD_FRAMES`（35）+ `STAGING_FRAMES`（90）- `WIPE_FRAMES`（28）overlap
-- 轉場: `-FADE_FRAMES`（10）overlap
+需精確 mirror Remotion 端 `calcTotalFrames()` 的邏輯。常數來源為 `remotion/src/ReelEstateVideo.tsx`：
+
+```python
+# Source of truth: remotion/src/ReelEstateVideo.tsx lines 15-20
+FADE_FRAMES = 10            # ~0.33s fade between scenes
+WIPE_FRAMES = 28            # ~0.93s wipe to staging
+STAGING_FRAMES = 90         # 3s staging display
+HOLD_FRAMES = 35            # ~1.17s freeze before staging wipe
+HOOK_FRAMES_PER_IMAGE = 30  # 1s per hook image
+MAX_HOOK_IMAGES = 3
+FPS = 30
+```
+
+**虛擬碼**（mirror `calcTotalFrames` + 記錄每場景起始 frame）：
+
+```python
+def calc_scene_start_times(scenes, hook_image_count):
+    """回傳 dict: scene_index → start_ms"""
+    starts = {}
+    cursor = hook_image_count * HOOK_FRAMES_PER_IMAGE  # Hook 佔的 frames
+
+    for i, scene in enumerate(scenes):
+        starts[i] = cursor / FPS * 1000  # frame → ms
+
+        cursor += scene["durationInFrames"]
+
+        # Staging 邏輯：clip → hold → wipe(overlap) → staging → fade(overlap) → next
+        if scene["type"] == "clip" and scene.get("stagingImage"):
+            cursor += HOLD_FRAMES
+            cursor += STAGING_FRAMES
+            cursor -= WIPE_FRAMES  # wipe overlap
+            next_scene = scenes[i + 1] if i + 1 < len(scenes) else None
+            if next_scene:
+                cursor -= FADE_FRAMES  # fade overlap after staging
+
+        # 一般轉場（非 staging）
+        elif i + 1 < len(scenes):
+            next_scene = scenes[i + 1]
+            if _needs_fade_between(scene, next_scene):
+                cursor -= FADE_FRAMES
+
+    return starts
+
+def _needs_fade_between(curr, next_scene):
+    """同空間 clip → clip 無轉場，其餘 fade"""
+    if curr["type"] == "clip" and next_scene["type"] == "clip":
+        if curr.get("label") == next_scene.get("label"):
+            return False
+    return True
+```
+
+**常數同步注意**：這些常數在 Remotion（TypeScript）和 orchestrator（Python）兩端各有一份。Python 端加註解標明 source of truth 為 Remotion 端。若 Remotion 常數修改，需同步更新 Python 端。
 
 轉換公式：`start_ms = start_frame / 30 * 1000`
 
@@ -90,7 +142,9 @@ Agent 端限制每段旁白字數，確保不超過場景時長：
 ### 修改
 
 - **`orchestrator/pipeline/jobs.py`**
-  - `_build_render_input()` 中呼叫 `align_narration()`
+  - 在 `_build_render_input()` 中，scenes 組裝完成後呼叫 `align_narration()`
+  - 需從 state 中取得原始 `narration_text`（帶 markers）和 `narration_subtitles`
+  - 需下載已上傳的 narration.mp3（從 `state.narration_url`）取得 audio bytes
   - 上傳重組後的音訊替換原本的 `narration_url`
   - 用調整後的字幕替換 `narration_subtitles`
 
@@ -112,6 +166,18 @@ Agent 端限制每段旁白字數，確保不超過場景時長：
 3. **某段音訊超過場景時長** — log warning，不截斷（允許少量溢出）
 4. **某段無字幕**（例如 section 文字為空）— 該段插入完整靜音
 5. **字幕文字比對失敗** — fallback 到原始音訊，不對齊
+6. **OPENING 旁白超過 HookScene 時長** — 允許延續到外觀 clip scene（預期行為，hook + 外觀共享 OPENING 旁白時段）
+
+## 測試策略
+
+- Unit test: `split_subtitles_by_sections()` — 各種 marker 組合、缺失 marker、空 section
+- Unit test: `calc_scene_start_times()` — 與 Remotion 端 `calcTotalFrames()` 交叉驗證
+- Unit test: `align_narration()` — 用假音訊驗證靜音 padding 長度和字幕偏移
+- 效能備註：pydub 在記憶體中操作整段音訊，目前旁白約 30-60 秒，無效能疑慮
+
+## 前置條件
+
+- Docker image 已包含 ffmpeg（`orchestrator/Dockerfile` 第 6 行），pydub 可直接使用
 
 ## 資料流
 
