@@ -8,6 +8,7 @@ import { ClipScene } from "./compositions/ClipScene";
 import { StagingScene } from "./compositions/StagingScene";
 import { StatsScene } from "./compositions/StatsScene";
 import { CTAScene } from "./compositions/CTAScene";
+import { HookScene } from "./compositions/HookScene";
 import { SubtitleOverlay } from "./components/SubtitleOverlay";
 import type { VideoInput, SceneInput, StatsSceneInput } from "./types";
 
@@ -15,6 +16,8 @@ export const FADE_FRAMES = 10;       // ~0.33s fade between scenes
 export const WIPE_FRAMES = 28;       // ~0.93s wipe to staging
 export const STAGING_FRAMES = 90;    // 3s
 export const HOLD_FRAMES = 35;       // ~1.17s freeze before staging wipe (accounts for transition overlap)
+export const HOOK_FRAMES_PER_IMAGE = 30; // 1s per image
+const MAX_HOOK_IMAGES = 3;
 
 const BGM_VOLUME = 0.15;
 const BGM_VOLUME_WITH_NARRATION = 0.05;
@@ -34,10 +37,23 @@ function needsFadeBetween(curr: SceneInput, next: SceneInput): boolean {
   return true;
 }
 
+/** 從 scenes 中提取前 N 張 staging 圖片 */
+function extractHookImages(scenes: SceneInput[], max: number): string[] {
+  const images: string[] = [];
+  for (const s of scenes) {
+    if (s.type === "clip" && s.stagingImage) {
+      images.push(s.stagingImage);
+      if (images.length >= max) break;
+    }
+  }
+  return images;
+}
+
 /** 根據 scenes 陣列計算總 frames（含轉場扣除） */
 export function calcTotalFrames(scenes: SceneInput[]): number {
-  let total = 0;
-  let transitionCount = 0;
+  // Hook: staging images before opening
+  const hookImages = extractHookImages(scenes, MAX_HOOK_IMAGES);
+  let total = hookImages.length * HOOK_FRAMES_PER_IMAGE;
 
   for (let i = 0; i < scenes.length; i++) {
     const scene = scenes[i];
@@ -78,6 +94,17 @@ export const ReelEstateVideo: React.FC<VideoInput> = (props) => {
   } = props;
 
   const seriesItems: React.ReactNode[] = [];
+
+  // Hook: rapid-fire staging images at the very beginning
+  const hookImages = extractHookImages(scenes, MAX_HOOK_IMAGES);
+  if (hookImages.length > 0) {
+    const hookDuration = hookImages.length * HOOK_FRAMES_PER_IMAGE;
+    seriesItems.push(
+      <TransitionSeries.Sequence key="hook" durationInFrames={hookDuration}>
+        <HookScene images={hookImages} framesPerImage={HOOK_FRAMES_PER_IMAGE} />
+      </TransitionSeries.Sequence>
+    );
+  }
 
   for (let i = 0; i < scenes.length; i++) {
     const scene = scenes[i];
