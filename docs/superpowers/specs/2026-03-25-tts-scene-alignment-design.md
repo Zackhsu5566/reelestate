@@ -1,4 +1,7 @@
-# TTS Scene Alignment Design
+# ~~TTS Scene Alignment Design~~ (SUPERSEDED)
+
+> **已淘汰**：此設計（char offset 拆分）已被 `2026-03-26-per-scene-tts-alignment-design.md` 取代。
+> 新方案採用 per-scene TTS（每段 section 獨立呼叫 MiniMax），消除繁簡轉換導致的對齊問題。
 
 ## 背景
 
