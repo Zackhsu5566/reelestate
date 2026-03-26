@@ -78,9 +78,9 @@ async def _narration_gate_poll(job_id: str, redis) -> tuple[str, str | None]:
 
 
 async def _task_tts(
-    state: JobState, redis, minimax: MiniMaxService, r2
-) -> None:
-    """Run narration gate + per-scene TTS + audio alignment."""
+    state: JobState, redis, minimax: MiniMaxService,
+) -> tuple[list[dict], list[dict]] | None:
+    """Run narration gate + per-scene TTS. Returns (sections, section_results) or None."""
     job_id = state.job_id
     if not state.narration_enabled or not state.narration_text:
         return
@@ -104,7 +104,7 @@ async def _task_tts(
         await store.update_narration(
             job_id, narration_gate_status="rejected", narration_enabled=False,
         )
-        return
+        return None
 
     # Use edited text if provided
     final_text = edited_text if action == "edit" else state.narration_text
@@ -116,7 +116,7 @@ async def _task_tts(
     sections = split_by_markers(final_text)
     if not sections:
         logger.warning("No section markers found in narration, skipping TTS: job=%s", job_id)
-        return
+        return None
 
     # Per-section TTS (parallel)
     # Note: minimax.synthesize() already has built-in 1-retry (see minimax.py:56-68)
@@ -155,12 +155,22 @@ async def _task_tts(
                 "subtitles": subtitles,
             })
 
-    # Build scenes and compute mapping
-    # Re-read state to get latest asset_tasks
+    return sections, section_results
+
+
+async def _align_and_upload_audio(
+    job_id: str, sections: list[dict], section_results: list[dict], r2,
+) -> None:
+    """Align per-section TTS audio to scene timings and upload to R2.
+
+    Must be called AFTER all asset tasks are complete so _build_render_input
+    produces the full scene list.
+    """
     fresh_state = await store.get(job_id)
     if fresh_state is None:
-        logger.error("Job %s disappeared during TTS", job_id)
+        logger.error("Job %s disappeared during audio alignment", job_id)
         return
+
     render_input = await _build_render_input(fresh_state)
     scenes = render_input["scenes"]
 
@@ -488,15 +498,16 @@ async def step_generate(state: JobState) -> None:
             poll_timeout=settings.minimax_poll_timeout,
         )
         tts_task = asyncio.create_task(
-            _task_tts(state, store.r, minimax, r2_service)
+            _task_tts(state, store.r, minimax)
         )
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
     state = await store.get(state.job_id)
 
     # Wait for TTS if running, then cleanup
+    tts_result = None
     if tts_task:
-        await tts_task
+        tts_result = await tts_task
         await minimax.close()
 
     for r in results:
@@ -512,6 +523,13 @@ async def step_generate(state: JobState) -> None:
         await store.append_error(state.job_id, "Critical task failed: clip generation failed")
         await store.set_status(state.job_id, JobStatus.failed)
         return
+
+    # Audio alignment — now all assets are complete, scenes are fully populated
+    if tts_result is not None:
+        sections, section_results = tts_result
+        await _align_and_upload_audio(
+            state.job_id, sections, section_results, r2_service,
+        )
 
     state.status = JobStatus.rendering
     await store.save(state)

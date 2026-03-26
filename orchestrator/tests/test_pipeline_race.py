@@ -128,21 +128,22 @@ class TestTaskTtsNoOverwrite:
         from orchestrator.pipeline import jobs
         original_store = jobs.store
         original_line_bot = jobs.line_bot
-        # Mock _build_render_input to return minimal scenes
-        original_build = jobs._build_render_input
-        mock_scenes = {"scenes": [{"type": "clip", "label": "客廳", "stagingImage": "img.jpg", "durationInFrames": 150}]}
-        jobs._build_render_input = AsyncMock(return_value=mock_scenes)
         try:
             jobs.store = mock_store
             jobs.line_bot = None
-            await jobs._task_tts(state, mock_redis, mock_minimax, mock_r2)
+            result = await jobs._task_tts(state, mock_redis, mock_minimax)
         finally:
             jobs.store = original_store
             jobs.line_bot = original_line_bot
-            jobs._build_render_input = original_build
 
         mock_store.save.assert_not_called()
         assert mock_store.update_narration.call_count >= 1
+        # _task_tts now returns (sections, section_results) for later alignment
+        assert result is not None
+        sections, section_results = result
+        assert len(sections) == 1
+        assert sections[0]["marker"] == "OPENING"
+        assert len(section_results) == 1
 
 
 from orchestrator.models import SpaceInfo, SpaceInput, AgentResult, PropertyInfo, AgentMeta
