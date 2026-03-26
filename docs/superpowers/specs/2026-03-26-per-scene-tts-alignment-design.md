@@ -63,6 +63,67 @@ results = await asyncio.gather(*[
 - 並行受既有 `Semaphore(5)` 控制
 - 每段的 subtitles 時間戳從 0 開始，天然屬於該 section
 
+## Section → Scene Mapping
+
+Section markers 和 scenes array 之間需要明確的 mapping 邏輯：
+
+```python
+def map_sections_to_scenes(sections, scenes, hook_image_count):
+    """
+    回傳 dict: marker → {start_ms, available_duration_ms}
+
+    Mapping 規則：
+    - OPENING: start_ms = 0, available = HookScene + 外觀 clip（label=="外觀" 的第一個 clip）
+    - 空間名（客廳、主臥...）: 該空間第一個 clip 的起始時間,
+      available = 同空間所有 clip + staging + hold 的總時長
+    - MAP / STATS / CTA: 按 scene["type"] 匹配
+    """
+    result = {}
+    scene_starts = _calc_scene_start_frames(scenes, hook_image_count)
+
+    # OPENING: 從 frame 0 開始
+    hook_ms = hook_image_count * HOOK_FRAMES_PER_IMAGE / FPS * 1000
+    first_clip_ms = scenes[0]["durationInFrames"] / FPS * 1000 if scenes else 0
+    result["OPENING"] = {
+        "start_ms": 0,
+        "available_ms": hook_ms + first_clip_ms,
+    }
+
+    # 空間 clips: 找每個空間的第一個 clip
+    seen_labels = set()
+    for i, scene in enumerate(scenes):
+        if scene["type"] == "clip":
+            label = scene.get("label", "")
+            if label == "外觀":
+                continue  # 外觀屬於 OPENING
+            if label not in seen_labels:
+                seen_labels.add(label)
+                result[label] = {
+                    "start_ms": scene_starts[i],
+                    "available_ms": _calc_space_duration(scenes, i, label),
+                }
+        elif scene["type"] == "map":
+            result["MAP"] = {"start_ms": scene_starts[i], "available_ms": scene["durationInFrames"] / FPS * 1000}
+        elif scene["type"] == "stats":
+            result["STATS"] = {"start_ms": scene_starts[i], "available_ms": scene["durationInFrames"] / FPS * 1000}
+        elif scene["type"] == "cta":
+            result["CTA"] = {"start_ms": scene_starts[i], "available_ms": scene["durationInFrames"] / FPS * 1000}
+
+    return result
+
+def _calc_space_duration(scenes, first_index, label):
+    """計算同空間所有 clip + staging + hold 的總可用時長（ms）"""
+    total_frames = 0
+    for i in range(first_index, len(scenes)):
+        scene = scenes[i]
+        if scene["type"] != "clip" or scene.get("label") != label:
+            break
+        total_frames += scene["durationInFrames"]
+        if scene.get("stagingImage"):
+            total_frames += HOLD_FRAMES + STAGING_FRAMES - WIPE_FRAMES
+    return total_frames / FPS * 1000
+```
+
 ## 場景起始時間計算
 
 需精確 mirror Remotion 端 `calcTotalFrames()` 的邏輯。常數來源為 `remotion/src/ReelEstateVideo.tsx`：
@@ -81,8 +142,8 @@ FPS = 30
 虛擬碼（mirror `calcTotalFrames` + 記錄每場景起始 frame）：
 
 ```python
-def calc_scene_start_times(scenes, hook_image_count):
-    """回傳 dict: scene_index → start_ms"""
+def _calc_scene_start_frames(scenes, hook_image_count):
+    """回傳 dict: scene_index → start_ms（內部用，不直接暴露）"""
     starts = {}
     cursor = hook_image_count * HOOK_FRAMES_PER_IMAGE
 
@@ -116,13 +177,16 @@ def _needs_fade_between(curr, next_scene):
 
 **常數同步注意**：Python 端加註解標明 source of truth 為 Remotion 端。若 Remotion 常數修改，需同步更新 Python 端。
 
+**效能備註**：pydub 在記憶體中操作整段音訊，目前旁白約 30-60 秒，多次 `AudioSegment.from_mp3()` 和拼接無效能疑慮。
+
 ## 音訊拼接邏輯
 
 ```python
-def assemble_audio(section_results, scene_starts):
+def assemble_audio(section_results, section_map):
     """
     section_results: [{marker, audio_bytes, subtitles, audio_duration_ms}]
-    scene_starts: {marker → start_ms}
+    section_map: map_sections_to_scenes() 的回傳值
+                 {marker → {start_ms, available_ms}}
 
     回傳: (final_audio_bytes, final_subtitles)
     """
@@ -130,15 +194,30 @@ def assemble_audio(section_results, scene_starts):
     final_subtitles = []
 
     for section in section_results:
-        target_start_ms = scene_starts[section.marker]
+        mapping = section_map[section.marker]
+        target_start_ms = mapping["start_ms"]
+        available_ms = mapping["available_ms"]
 
         # 前面補靜音到 target 位置
         gap = target_start_ms - len(final_audio)
         if gap > 0:
             final_audio += AudioSegment.silent(duration=gap)
+        elif gap < 0:
+            # 前一段旁白溢出，與本段有重疊
+            logger.warning(
+                "Audio overlap: section %s starts at %dms but previous audio ends at %dms (overlap=%dms)",
+                section.marker, target_start_ms, len(final_audio), -gap,
+            )
+            # 不截斷前一段，直接拼接（接受少量重疊）
 
         # 加入 section audio
-        final_audio += AudioSegment.from_mp3(section.audio_bytes)
+        section_audio = AudioSegment.from_mp3(section.audio_bytes)
+        if len(section_audio) > available_ms:
+            logger.warning(
+                "Section %s audio (%dms) exceeds available duration (%dms)",
+                section.marker, len(section_audio), available_ms,
+            )
+        final_audio += section_audio
 
         # 字幕加 offset
         for sub in section.subtitles:
@@ -151,12 +230,9 @@ def assemble_audio(section_results, scene_starts):
     return final_audio.export(format="mp3"), final_subtitles
 ```
 
-**OPENING 特殊處理**：
-- `target_start_ms = 0`
-- 可用時長 = HookScene + 外觀 clip = `hook_image_count * HOOK_FRAMES_PER_IMAGE / FPS * 1000` + 第一個 clip 的 `durationInFrames / FPS * 1000`
-
 **溢出處理**：
 - 如果某段 audio > 場景可用時長 → log warning，不截斷（允許少量溢到轉場期間）
+- 如果前一段溢出導致 gap < 0 → log warning，直接拼接（接受少量重疊）
 - 上游 Agent 靠字數限制確保 99% 不溢出
 
 ## Gate 預覽與編輯流程
@@ -202,8 +278,13 @@ Marker → Emoji 對照：
 ### 編輯流程
 
 1. 用戶按「✏️ 修改講稿」→ 進入 edit 模式
-2. 用戶回傳整段文字（帶段落標題）
-3. Pipeline parse 回 section markers，重新拆分
+2. 用戶回傳整段文字（帶 emoji 段落標題，如「🏠 客廳\n改後的文字」）
+3. Pipeline parse emoji 標題反向 mapping 回 section markers：
+   - `🎬 開場` → `[OPENING]`
+   - `🏠 空間名` → `[空間名]`
+   - `🗺️ 周邊` → `[MAP]`
+   - `📊 規格` → `[STATS]`
+   - `📞 聯繫` → `[CTA]`
 4. 全部 section 重跑 TTS（並行，幾秒完成）
 5. 重新拼接 + 上傳
 
@@ -214,10 +295,13 @@ Marker → Emoji 對照：
 Agent 端限制每段旁白字數，確保不超過場景時長：
 - 1.2x 語速，約 4.8 字/秒
 - Clip scene 3.5s → **最多 16 字**
+- Clip scene（小空間）2.8s → **最多 13 字**
 - Map scene 10s → **最多 48 字**
 - Stats scene 7s → **最多 33 字**
 - CTA scene 5s → **最多 24 字**
 - Opening（Hook 3s + 外觀 3.5s = 6.5s）→ **最多 31 字**
+
+> 注意：小空間（`is_small_space=True`）使用 `CLIP_SMALL_FRAMES=84`（2.8s），字數上限更低。Agent prompt 需區分。
 
 ## 改動範圍
 
@@ -225,8 +309,8 @@ Agent 端限制每段旁白字數，確保不超過場景時長：
 
 - **`orchestrator/services/audio_align.py`** — 核心對齊模組
   - `split_by_markers(narration_text)` — 按 section marker 拆分
-  - `calc_scene_start_times(scenes, hook_image_count)` — mirror Remotion 常數
-  - `assemble_audio(sections_results, scene_starts)` — pad + 拼接 audio + 調整字幕
+  - `map_sections_to_scenes(sections, scenes, hook_image_count)` — marker → scene 起始時間 + 可用時長
+  - `assemble_audio(section_results, section_map)` — pad + 拼接 audio + 調整字幕
 
 ### 修改
 
@@ -257,8 +341,9 @@ Agent 端限制每段旁白字數，確保不超過場景時長：
 ## 測試策略
 
 - Unit test: `split_by_markers()` — 各種 marker 組合、缺失 marker、空 section
-- Unit test: `calc_scene_start_times()` — 與 Remotion 端 `calcTotalFrames()` 交叉驗證
-- Unit test: `assemble_audio()` — 假 audio 驗證 padding 長度和字幕偏移
+- Unit test: `map_sections_to_scenes()` — OPENING 特殊處理、同空間多 clip、外觀 clip 歸屬
+- Unit test: `_calc_scene_start_frames()` — 與 Remotion 端 `calcTotalFrames()` 交叉驗證
+- Unit test: `assemble_audio()` — 假 audio 驗證 padding 長度、字幕偏移、負 gap 處理
 - Integration: 真實 MiniMax 跑一次完整流程驗證
 
 ## 前置條件
