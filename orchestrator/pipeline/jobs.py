@@ -531,8 +531,7 @@ async def step_generate(state: JobState) -> None:
             state.job_id, sections, section_results, r2_service,
         )
 
-    state.status = JobStatus.rendering
-    await store.save(state)
+    await store.set_status(state.job_id, JobStatus.rendering)
 
 
 # ── Step 3: Render ──
