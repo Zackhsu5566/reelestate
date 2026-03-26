@@ -86,22 +86,32 @@ class TestTaskTtsNoOverwrite:
         """After _task_tts runs, store.save must NOT be called — only update_narration."""
         from orchestrator.pipeline.state import JobStore
 
-        mock_store = JobStore()
-        mock_store._redis = AsyncMock()
-        mock_store.save = AsyncMock()
-        mock_store.update_narration = AsyncMock()
-
         state = _make_state(
             narration_enabled=True,
             narration_text="[OPENING]\n測試旁白",
         )
 
+        mock_store = JobStore()
+        mock_store._redis = AsyncMock()
+        mock_store.save = AsyncMock()
+        mock_store.update_narration = AsyncMock()
+        # store.get() is called to re-read state for scene building
+        mock_store.get = AsyncMock(return_value=state)
+
         mock_redis = AsyncMock()
         mock_redis.set = AsyncMock()
         mock_redis.get = AsyncMock(return_value="approved")
 
+        # synthesize returns (audio_bytes, subtitles_list)
+        # Generate valid MP3 bytes so pydub can decode them in assemble_audio
+        from pydub import AudioSegment as _AS
+        from io import BytesIO as _BIO
+        _buf = _BIO()
+        _AS.silent(duration=500).export(_buf, format="mp3")
+        fake_audio = _buf.getvalue()
+        fake_subs = [{"text": "測試旁白", "time_begin": 0, "time_end": 500}]
         mock_minimax = AsyncMock()
-        mock_minimax.synthesize = AsyncMock(return_value=b"fake-mp3-data")
+        mock_minimax.synthesize = AsyncMock(return_value=(fake_audio, fake_subs))
 
         mock_r2 = AsyncMock()
         mock_r2.upload_bytes = AsyncMock(return_value="https://example.com/narration.mp3")
@@ -118,6 +128,10 @@ class TestTaskTtsNoOverwrite:
         from orchestrator.pipeline import jobs
         original_store = jobs.store
         original_line_bot = jobs.line_bot
+        # Mock _build_render_input to return minimal scenes
+        original_build = jobs._build_render_input
+        mock_scenes = {"scenes": [{"type": "clip", "label": "客廳", "stagingImage": "img.jpg", "durationInFrames": 150}]}
+        jobs._build_render_input = AsyncMock(return_value=mock_scenes)
         try:
             jobs.store = mock_store
             jobs.line_bot = None
@@ -125,6 +139,7 @@ class TestTaskTtsNoOverwrite:
         finally:
             jobs.store = original_store
             jobs.line_bot = original_line_bot
+            jobs._build_render_input = original_build
 
         mock_store.save.assert_not_called()
         assert mock_store.update_narration.call_count >= 1

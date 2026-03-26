@@ -23,6 +23,7 @@ from orchestrator.services.r2 import r2_service
 from orchestrator.services.render import render_service
 from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, PROMPT_PUSH_IN, PROMPT_PAN
 from orchestrator.line.bot import line_bot
+from orchestrator.services.audio_align import split_by_markers, map_sections_to_scenes, assemble_audio, MAX_HOOK_IMAGES
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ async def _narration_gate_poll(job_id: str, redis) -> tuple[str, str | None]:
 async def _task_tts(
     state: JobState, redis, minimax: MiniMaxService, r2
 ) -> None:
-    """Run narration gate + TTS. Uses atomic updates to avoid clobbering asset_tasks."""
+    """Run narration gate + per-scene TTS + audio alignment."""
     job_id = state.job_id
     if not state.narration_enabled or not state.narration_text:
         return
@@ -111,14 +112,66 @@ async def _task_tts(
         job_id, narration_text=final_text, narration_gate_status="approved",
     )
 
-    # Run TTS
-    result = await minimax.synthesize(final_text)
-    if not result:
-        logger.warning("TTS failed, degrading to no narration: job=%s", job_id)
-        await store.update_narration(job_id, narration_url=None)
+    # Split narration into sections
+    sections = split_by_markers(final_text)
+    if not sections:
+        logger.warning("No section markers found in narration, skipping TTS: job=%s", job_id)
         return
 
-    audio_bytes, subtitles = result
+    # Per-section TTS (parallel)
+    # Note: minimax.synthesize() already has built-in 1-retry (see minimax.py:56-68)
+    non_empty = [(i, s) for i, s in enumerate(sections) if s["text"].strip()]
+    tts_results = await asyncio.gather(*[
+        minimax.synthesize(s["text"]) for _, s in non_empty
+    ], return_exceptions=True)
+
+    # Build section_results, handling failures
+    result_map = dict(zip([i for i, _ in non_empty], tts_results))
+    section_results: list[dict] = []
+    for i, section in enumerate(sections):
+        result = result_map.get(i)
+        if result is None or isinstance(result, Exception):
+            if isinstance(result, Exception):
+                logger.warning(
+                    "TTS failed for section %s: %s, inserting silence: job=%s",
+                    section["marker"], result, job_id,
+                )
+            # Empty audio + no subtitles for failed/empty section
+            from pydub import AudioSegment as _AS
+            from io import BytesIO as _BIO
+            silent = _AS.silent(duration=100)
+            buf = _BIO()
+            silent.export(buf, format="mp3")
+            section_results.append({
+                "marker": section["marker"],
+                "audio_bytes": buf.getvalue(),
+                "subtitles": [],
+            })
+        else:
+            audio_bytes, subtitles = result
+            section_results.append({
+                "marker": section["marker"],
+                "audio_bytes": audio_bytes,
+                "subtitles": subtitles,
+            })
+
+    # Build scenes and compute mapping
+    # Re-read state to get latest asset_tasks
+    fresh_state = await store.get(job_id)
+    if fresh_state is None:
+        logger.error("Job %s disappeared during TTS", job_id)
+        return
+    render_input = await _build_render_input(fresh_state)
+    scenes = render_input["scenes"]
+
+    # Count hook images (staging images, capped at MAX_HOOK_IMAGES)
+    hook_image_count = min(
+        sum(1 for s in scenes if s["type"] == "clip" and s.get("stagingImage")),
+        MAX_HOOK_IMAGES,
+    )
+
+    section_map = map_sections_to_scenes(sections, scenes, hook_image_count)
+    audio_bytes, subtitles = assemble_audio(section_results, section_map)
 
     # Log duration (observability)
     try:
@@ -132,7 +185,7 @@ async def _task_tts(
         )
         if result.returncode == 0:
             duration = float(result.stdout.strip())
-            logger.info("TTS audio duration: %.1fs (job=%s)", duration, job_id)
+            logger.info("TTS aligned audio duration: %.1fs (job=%s)", duration, job_id)
     except Exception:
         pass  # observability only
 
