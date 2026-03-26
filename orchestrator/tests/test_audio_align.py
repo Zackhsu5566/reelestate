@@ -156,3 +156,71 @@ class TestMapSectionsToScenes:
         assert result["MAP"]["available_ms"] == 300 / 30 * 1000
         assert result["STATS"]["available_ms"] == 210 / 30 * 1000
         assert result["CTA"]["available_ms"] == 150 / 30 * 1000
+
+
+from unittest.mock import patch
+from pydub import AudioSegment
+from orchestrator.services.audio_align import assemble_audio
+
+
+def _make_audio_bytes(duration_ms: int) -> bytes:
+    """Generate silent MP3 bytes of given duration."""
+    seg = AudioSegment.silent(duration=duration_ms)
+    buf = seg.export(format="mp3")
+    return buf.read()
+
+
+class TestAssembleAudio:
+    def test_basic_assembly(self):
+        section_results = [
+            {"marker": "OPENING", "audio_bytes": _make_audio_bytes(2000), "subtitles": [
+                {"text": "開場", "time_begin": 0, "time_end": 2000},
+            ]},
+            {"marker": "客廳", "audio_bytes": _make_audio_bytes(1500), "subtitles": [
+                {"text": "客廳", "time_begin": 0, "time_end": 1500},
+            ]},
+        ]
+        section_map = {
+            "OPENING": {"start_ms": 0, "available_ms": 6500},
+            "客廳": {"start_ms": 6500, "available_ms": 3500},
+        }
+        audio_bytes, subtitles = assemble_audio(section_results, section_map)
+        assert isinstance(audio_bytes, bytes)
+        assert len(subtitles) == 2
+        assert subtitles[0]["time_begin"] == 0
+        assert subtitles[0]["time_end"] == 2000
+        assert subtitles[1]["time_begin"] == 6500
+        assert subtitles[1]["time_end"] == 8000
+
+    def test_overlap_warning(self):
+        """When previous section overflows, gap < 0 should log warning."""
+        section_results = [
+            {"marker": "OPENING", "audio_bytes": _make_audio_bytes(7000), "subtitles": []},
+            {"marker": "客廳", "audio_bytes": _make_audio_bytes(1000), "subtitles": []},
+        ]
+        section_map = {
+            "OPENING": {"start_ms": 0, "available_ms": 6500},
+            "客廳": {"start_ms": 6500, "available_ms": 3500},
+        }
+        with patch("orchestrator.services.audio_align.logger") as mock_logger:
+            audio_bytes, subtitles = assemble_audio(section_results, section_map)
+            assert mock_logger.warning.call_count >= 1
+
+    def test_empty_section_results(self):
+        audio_bytes, subtitles = assemble_audio([], {})
+        assert isinstance(audio_bytes, bytes)
+        assert subtitles == []
+
+    def test_unknown_marker_skipped(self):
+        """Section with marker not in section_map should be skipped, not crash."""
+        section_results = [
+            {"marker": "OPENING", "audio_bytes": _make_audio_bytes(1000), "subtitles": []},
+            {"marker": "浴室", "audio_bytes": _make_audio_bytes(1000), "subtitles": []},
+        ]
+        section_map = {
+            "OPENING": {"start_ms": 0, "available_ms": 6500},
+        }
+        with patch("orchestrator.services.audio_align.logger") as mock_logger:
+            audio_bytes, subtitles = assemble_audio(section_results, section_map)
+            assert isinstance(audio_bytes, bytes)
+            assert any("浴室" in str(c) for c in mock_logger.warning.call_args_list)

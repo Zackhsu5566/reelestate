@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import logging
 import re
+from io import BytesIO
+
+from pydub import AudioSegment
 
 logger = logging.getLogger(__name__)
 
@@ -156,3 +159,67 @@ def map_sections_to_scenes(
             }
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Audio assembly: pad silence between sections and concatenate
+# ---------------------------------------------------------------------------
+
+
+def assemble_audio(
+    section_results: list[dict],
+    section_map: dict[str, dict],
+) -> tuple[bytes, list[dict]]:
+    """Pad and concatenate per-section audio, adjusting subtitle timestamps.
+
+    Args:
+        section_results: [{marker, audio_bytes, subtitles}] in order
+        section_map: {marker: {start_ms, available_ms}} from map_sections_to_scenes
+
+    Returns:
+        (final_mp3_bytes, aligned_subtitles)
+    """
+    if not section_results:
+        seg = AudioSegment.silent(duration=100)
+        buf = BytesIO()
+        seg.export(buf, format="mp3")
+        return buf.getvalue(), []
+
+    final_audio = AudioSegment.empty()
+    final_subtitles: list[dict] = []
+
+    for section in section_results:
+        mapping = section_map.get(section["marker"])
+        if mapping is None:
+            logger.warning("No scene mapping for section %s, skipping", section["marker"])
+            continue
+        target_start_ms = mapping["start_ms"]
+        available_ms = mapping["available_ms"]
+
+        gap = target_start_ms - len(final_audio)
+        if gap > 0:
+            final_audio += AudioSegment.silent(duration=gap)
+        elif gap < 0:
+            logger.warning(
+                "Audio overlap: section %s starts at %dms but previous audio ends at %dms (overlap=%dms)",
+                section["marker"], target_start_ms, len(final_audio), -gap,
+            )
+
+        section_audio = AudioSegment.from_mp3(BytesIO(section["audio_bytes"]))
+        if len(section_audio) > available_ms:
+            logger.warning(
+                "Section %s audio (%dms) exceeds available duration (%dms)",
+                section["marker"], len(section_audio), available_ms,
+            )
+        final_audio += section_audio
+
+        for sub in section["subtitles"]:
+            final_subtitles.append({
+                "text": sub["text"],
+                "time_begin": sub["time_begin"] + target_start_ms,
+                "time_end": sub["time_end"] + target_start_ms,
+            })
+
+    buf = BytesIO()
+    final_audio.export(buf, format="mp3")
+    return buf.getvalue(), final_subtitles
