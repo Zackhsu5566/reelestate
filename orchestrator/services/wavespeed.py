@@ -202,7 +202,7 @@ class WaveSpeedService:
 
         pid = await self.submit(
             MODEL_STAGING,
-            {"images": [image_url], "prompt": prompt},
+            {"images": [image_url], "prompt": prompt, "resolution": "2k"},
         )
         return await self.poll(pid)
 
@@ -210,7 +210,7 @@ class WaveSpeedService:
         """Submit staging, return prediction_id."""
         return await self.submit(
             MODEL_STAGING,
-            {"images": [image_url], "prompt": prompt},
+            {"images": [image_url], "prompt": prompt, "resolution": "2k"},
         )
 
 
