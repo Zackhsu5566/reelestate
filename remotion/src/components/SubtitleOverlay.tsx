@@ -5,6 +5,33 @@ import type { NarrationSubtitle } from "../types";
 const { fontFamily } = loadFont("normal", { weights: ["700"] });
 
 const FADE_FRAMES = 5;
+const MAX_CHARS_PER_LINE = 16;
+
+/** Split long text into lines of at most `maxChars` characters,
+ *  breaking at punctuation or natural boundaries when possible. */
+function wrapText(text: string, maxChars: number = MAX_CHARS_PER_LINE): string[] {
+  if (text.length <= maxChars) return [text];
+
+  const lines: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > maxChars) {
+    // Look for a punctuation break point within the limit
+    let breakAt = -1;
+    for (let i = maxChars - 1; i >= maxChars / 2; i--) {
+      if (/[，、。！？；：,.]/.test(remaining[i])) {
+        breakAt = i + 1;
+        break;
+      }
+    }
+    if (breakAt === -1) breakAt = maxChars;
+
+    lines.push(remaining.slice(0, breakAt));
+    remaining = remaining.slice(breakAt);
+  }
+  if (remaining) lines.push(remaining);
+  return lines;
+}
 
 type Props = {
   subtitles: NarrationSubtitle[];
@@ -64,7 +91,9 @@ export const SubtitleOverlay: React.FC<Props> = ({ subtitles }) => {
             lineHeight: 1.4,
           }}
         >
-          {active.text}
+          {wrapText(active.text).map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
         </div>
       </div>
     </div>

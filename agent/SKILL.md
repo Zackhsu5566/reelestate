@@ -153,7 +153,7 @@ Orchestrator 會以 JSON 傳入：
 | OPENING（開場 + 外觀）| ~6.2s | 29 字 |
 | 一般空間 clip | 3.5s | 16 字 |
 | 小空間 clip（is_small_space） | 2.8s | 13 字 |
-| MAP（周邊） | 15s | 72 字 |
+| MAP（周邊） | 15s | 48 字 |
 | STATS（規格） | 7s | 33 字 |
 | CTA（聯繫） | 5s | 24 字 |
 
