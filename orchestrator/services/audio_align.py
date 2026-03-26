@@ -13,6 +13,16 @@ logger = logging.getLogger(__name__)
 
 _MARKER_RE = re.compile(r"^\[(.+?)\]\s*$", re.MULTILINE)
 
+# ── Remotion frame constants ──
+# Source of truth: remotion/src/ReelEstateVideo.tsx lines 15-19
+FADE_FRAMES = 10
+WIPE_FRAMES = 28
+STAGING_FRAMES = 90
+HOLD_FRAMES = 35
+HOOK_FRAMES_PER_IMAGE = 30
+MAX_HOOK_IMAGES = 3
+FPS = 30
+
 
 def split_by_markers(narration_text: str) -> list[dict]:
     """Split narration text by [MARKER] lines.
@@ -32,3 +42,117 @@ def split_by_markers(narration_text: str) -> list[dict]:
         sections.append({"marker": marker, "text": text})
 
     return sections
+
+
+# ---------------------------------------------------------------------------
+# Scene start time calculation (mirrors Remotion calcTotalFrames)
+# ---------------------------------------------------------------------------
+
+
+def _needs_fade_between(curr: dict, next_scene: dict) -> bool:
+    """Same-space clip->clip has no fade; everything else fades."""
+    if curr["type"] == "clip" and next_scene["type"] == "clip":
+        if curr.get("label") == next_scene.get("label"):
+            return False
+    return True
+
+
+def _calc_scene_start_frames(
+    scenes: list[dict], hook_image_count: int
+) -> dict[int, float]:
+    """Return {scene_index: start_ms}. Mirrors Remotion calcTotalFrames."""
+    starts: dict[int, float] = {}
+    cursor = hook_image_count * HOOK_FRAMES_PER_IMAGE
+
+    for i, scene in enumerate(scenes):
+        starts[i] = cursor / FPS * 1000
+        cursor += scene["durationInFrames"]
+
+        if scene["type"] == "clip" and scene.get("stagingImage"):
+            cursor += HOLD_FRAMES
+            cursor += STAGING_FRAMES
+            cursor -= WIPE_FRAMES
+            next_scene = scenes[i + 1] if i + 1 < len(scenes) else None
+            if next_scene:
+                cursor -= FADE_FRAMES
+        elif i + 1 < len(scenes):
+            next_scene = scenes[i + 1]
+            if _needs_fade_between(scene, next_scene):
+                cursor -= FADE_FRAMES
+
+    return starts
+
+
+def _calc_space_duration(
+    scenes: list[dict], first_index: int, label: str
+) -> float:
+    """Total available ms for all consecutive clips with same label (+ staging overhead)."""
+    total_frames = 0
+    for i in range(first_index, len(scenes)):
+        scene = scenes[i]
+        if scene["type"] != "clip" or scene.get("label") != label:
+            break
+        total_frames += scene["durationInFrames"]
+        if scene.get("stagingImage"):
+            total_frames += HOLD_FRAMES + STAGING_FRAMES - WIPE_FRAMES
+    return total_frames / FPS * 1000
+
+
+def map_sections_to_scenes(
+    sections: list[dict],
+    scenes: list[dict],
+    hook_image_count: int,
+) -> dict[str, dict]:
+    """Map section markers to {start_ms, available_ms}."""
+    result: dict[str, dict] = {}
+    scene_starts = _calc_scene_start_frames(scenes, hook_image_count)
+
+    # OPENING: from frame 0, available until the first non-exterior scene starts
+    first_non_exterior_idx = next(
+        (
+            i
+            for i, s in enumerate(scenes)
+            if not (s["type"] == "clip" and s.get("label") == "外觀")
+        ),
+        None,
+    )
+    if first_non_exterior_idx is not None:
+        opening_available = scene_starts[first_non_exterior_idx]
+    else:
+        hook_ms = hook_image_count * HOOK_FRAMES_PER_IMAGE / FPS * 1000
+        first_clip_ms = (
+            scenes[0]["durationInFrames"] / FPS * 1000 if scenes else 0
+        )
+        opening_available = hook_ms + first_clip_ms
+    result["OPENING"] = {"start_ms": 0, "available_ms": opening_available}
+
+    # Space clips + special scene types
+    seen_labels: set[str] = set()
+    for i, scene in enumerate(scenes):
+        if scene["type"] == "clip":
+            label = scene.get("label", "")
+            if label == "外觀":
+                continue
+            if label not in seen_labels:
+                seen_labels.add(label)
+                result[label] = {
+                    "start_ms": scene_starts[i],
+                    "available_ms": _calc_space_duration(scenes, i, label),
+                }
+        elif scene["type"] == "map":
+            result["MAP"] = {
+                "start_ms": scene_starts[i],
+                "available_ms": scene["durationInFrames"] / FPS * 1000,
+            }
+        elif scene["type"] == "stats":
+            result["STATS"] = {
+                "start_ms": scene_starts[i],
+                "available_ms": scene["durationInFrames"] / FPS * 1000,
+            }
+        elif scene["type"] == "cta":
+            result["CTA"] = {
+                "start_ms": scene_starts[i],
+                "available_ms": scene["durationInFrames"] / FPS * 1000,
+            }
+
+    return result
