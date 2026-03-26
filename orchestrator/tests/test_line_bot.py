@@ -122,3 +122,41 @@ async def test_send_final(bot):
     assert messages[1]["type"] == "text"
     assert "完成" in messages[1]["text"]
     await bot.close()
+
+
+class TestGateNarrationDisplay:
+    def test_markers_converted_to_emoji_titles(self):
+        bot = LineBot()
+        text = (
+            "[OPENING]\n今天帶你來看\n\n"
+            "[客廳]\n超大面落地窗\n\n"
+            "[MAP]\n信義安和站旁邊\n\n"
+            "[STATS]\n三十五坪\n\n"
+            "[CTA]\n售價兩千九百八十萬\n"
+        )
+        display = bot._format_narration_preview(text)
+        assert "🎬 開場" in display
+        assert "🏠 客廳" in display
+        assert "🗺️ 周邊" in display
+        assert "📊 規格" in display
+        assert "📞 聯繫" in display
+        assert "[OPENING]" not in display
+        assert "今天帶你來看" in display
+
+    def test_reverse_mapping_emoji_to_markers(self):
+        bot = LineBot()
+        edited = (
+            "🎬 開場\n今天帶你來看\n\n"
+            "🏠 客廳\n改過的客廳描述\n\n"
+            "🗺️ 周邊\n信義安和站\n\n"
+            "📊 規格\n三十五坪\n\n"
+            "📞 聯繫\n售價兩千萬\n"
+        )
+        restored = bot._parse_edited_narration(edited)
+        assert "[OPENING]" in restored
+        assert "[客廳]" in restored
+        assert "[MAP]" in restored
+        assert "[STATS]" in restored
+        assert "[CTA]" in restored
+        assert "今天帶你來看" in restored
+        assert "改過的客廳描述" in restored

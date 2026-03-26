@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 import httpx
 
@@ -10,6 +11,22 @@ PUSH_URL = "https://api.line.me/v2/bot/message/push"
 
 # Quick Reply 空間標籤選項
 SPACE_LABELS = ["外觀", "客廳", "主臥", "次臥", "書房", "廚房", "浴室", "陽台", "工作陽台", "露台", "車庫"]
+
+_MARKER_EMOJI_MAP = {
+    "OPENING": "🎬 開場",
+    "MAP": "🗺️ 周邊",
+    "STATS": "📊 規格",
+    "CTA": "📞 聯繫",
+}
+
+_EMOJI_TO_MARKER = {
+    "🎬 開場": "[OPENING]",
+    "🗺️ 周邊": "[MAP]",
+    "📊 規格": "[STATS]",
+    "📞 聯繫": "[CTA]",
+}
+
+_SPACE_EMOJI_RE = re.compile(r"^🏠\s+(.+)$")
 
 
 def _quick_reply_items(labels: list[str]) -> dict:
@@ -488,13 +505,49 @@ class LineBot:
         """Remind user that only text is accepted in the current state, then re-prompt."""
         await self.send_message(chat_id, f"請輸入文字訊息喔！\n{reprompt}")
 
+    def _format_narration_preview(self, narration_text: str) -> str:
+        """Convert section markers to emoji titles for LINE preview."""
+        lines = narration_text.split("\n")
+        result: list[str] = []
+        marker_re = re.compile(r"^\[(.+?)\]\s*$")
+
+        for line in lines:
+            m = marker_re.match(line.strip())
+            if m:
+                marker = m.group(1)
+                display = _MARKER_EMOJI_MAP.get(marker, f"🏠 {marker}")
+                result.append(f"\n{display}")
+            else:
+                cleaned = re.sub(r"<#[\d.]+#>", "", line)
+                if cleaned.strip():
+                    result.append(cleaned)
+
+        return "\n".join(result).strip()
+
+    def _parse_edited_narration(self, edited_text: str) -> str:
+        """Convert emoji-titled edited text back to [MARKER] format."""
+        lines = edited_text.split("\n")
+        result: list[str] = []
+
+        for line in lines:
+            stripped = line.strip()
+            marker = _EMOJI_TO_MARKER.get(stripped)
+            if marker:
+                result.append(marker)
+                continue
+            m = _SPACE_EMOJI_RE.match(stripped)
+            if m:
+                result.append(f"[{m.group(1)}]")
+                continue
+            result.append(line)
+
+        return "\n".join(result)
+
     async def send_gate_narration(
         self, chat_id: str, job_id: str, narration_text: str,
     ) -> None:
         """Send narration preview with approve/edit/reject buttons."""
-        import re
-        display_text = re.sub(r"^\[.+?\]\s*$", "", narration_text, flags=re.MULTILINE)
-        display_text = re.sub(r"<#[\d.]+#>", "", display_text).strip()
+        display_text = self._format_narration_preview(narration_text)
 
         actions = [
             {
