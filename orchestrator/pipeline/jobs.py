@@ -21,7 +21,7 @@ from orchestrator.services.agent import agent_service
 from orchestrator.services.minimax import MiniMaxService
 from orchestrator.services.r2 import r2_service
 from orchestrator.services.render import render_service
-from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, PROMPT_PUSH_IN, PROMPT_PAN
+from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, PROMPT_PULL_OUT, PROMPT_PAN
 from orchestrator.line.bot import line_bot
 from orchestrator.services.audio_align import split_by_markers, map_sections_to_scenes, assemble_audio, MAX_HOOK_IMAGES
 
@@ -461,9 +461,9 @@ async def step_generate(state: JobState) -> None:
         )
         has_staging = staging_prompt is not None
 
-        # 客廳/廚房用 Push In，其餘用 Rotate
+        # 客廳/廚房用 Pull Out，其餘用 Pan
         camera_prompt = (
-            PROMPT_PUSH_IN if space.name in ("客廳", "廚房") else PROMPT_PAN
+            PROMPT_PULL_OUT if space.name in ("客廳", "廚房") else PROMPT_PAN
         )
         for idx, photo_url in enumerate(photos):
             is_last = (idx == len(photos) - 1)
