@@ -6,16 +6,18 @@ const { fontFamily } = loadFont("normal", { weights: ["700"] });
 
 const FADE_FRAMES = 5;
 const MAX_CHARS_PER_LINE = 16;
+const MAX_LINES = 2;
 
 /** Split long text into lines of at most `maxChars` characters,
- *  breaking at punctuation or natural boundaries when possible. */
+ *  breaking at punctuation or natural boundaries when possible.
+ *  Caps output to MAX_LINES to prevent overflowing the subtitle area. */
 function wrapText(text: string, maxChars: number = MAX_CHARS_PER_LINE): string[] {
   if (text.length <= maxChars) return [text];
 
   const lines: string[] = [];
   let remaining = text;
 
-  while (remaining.length > maxChars) {
+  while (remaining.length > maxChars && lines.length < MAX_LINES - 1) {
     // Look for a punctuation break point within the limit
     let breakAt = -1;
     for (let i = maxChars - 1; i >= maxChars / 2; i--) {
@@ -30,7 +32,7 @@ function wrapText(text: string, maxChars: number = MAX_CHARS_PER_LINE): string[]
     remaining = remaining.slice(breakAt);
   }
   if (remaining) lines.push(remaining);
-  return lines;
+  return lines.slice(0, MAX_LINES);
 }
 
 type Props = {

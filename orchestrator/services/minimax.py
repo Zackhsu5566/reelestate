@@ -26,7 +26,7 @@ _SECTION_MARKER_RE = re.compile(r"^\[.+?\]\s*$", re.MULTILINE)
 _BASE_URL = "https://api.minimaxi.chat/v1"
 
 # Subtitle grouping: merge word-level subtitles into readable phrases
-_MAX_GROUP_CHARS = 20  # fits within 2 lines of 16 chars
+_MAX_GROUP_CHARS = 16  # fits within 1 line of 16 chars
 _MAX_GROUP_GAP_MS = 300  # force new group if gap between words exceeds this
 
 

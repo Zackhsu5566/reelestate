@@ -18,8 +18,8 @@ const { fontFamily } = loadFont("normal", {
 const MAPBOX_STYLE_ID = "beingzackhsu/cmmrh4sis008501rndfa72u92";
 
 // Exported for MapScene timing
-export const FLY_DURATION_FRAMES = 120; // 4s at 30fps
-export const POI_START_FRAME = 150; // POIs appear at 5s
+export const FLY_DURATION_FRAMES = 0; // no zoom animation — start at final position
+export const POI_START_FRAME = 15; // POIs appear after brief settle (~0.5s)
 
 const POI_STAGGER = 60; // 2s between each POI
 const LINE_DRAW_FRAMES = 20; // ~0.67s connector line animation
@@ -50,14 +50,10 @@ type Props = {
   pois?: POI[];
 };
 
-function cameraAtFrame(frame: number) {
-  const t = Math.min(frame / FLY_DURATION_FRAMES, 1);
-  const p = Easing.out(Easing.cubic)(t);
-  return {
-    zoom: interpolate(p, [0, 1], [10, 15]),
-    pitch: interpolate(p, [0, 1], [0, 30]),
-    bearing: interpolate(p, [0, 1], [0, 0]),
-  };
+const CAMERA = { zoom: 15, pitch: 30, bearing: 0 };
+
+function cameraAtFrame(_frame: number) {
+  return CAMERA;
 }
 
 export const MapboxFlyIn: React.FC<Props> = ({
