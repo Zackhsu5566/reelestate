@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from orchestrator.services.minimax import MiniMaxService, _t2s
+from orchestrator.services.minimax import MiniMaxService, _t2s, _group_subtitles
 
 
 @pytest.fixture
@@ -53,10 +53,11 @@ async def test_synthesize_success(service):
         "base_resp": {"status_code": 0},
     })
 
-    # Mock subtitle fetch response
+    # Mock subtitle fetch response (code uses .read(), not .json())
+    import json as _json
     subtitle_resp = AsyncMock()
     subtitle_resp.status = 200
-    subtitle_resp.json = AsyncMock(return_value=fake_subtitles)
+    subtitle_resp.read = AsyncMock(return_value=_json.dumps(fake_subtitles).encode())
 
     mock_session.post = AsyncMock(return_value=tts_resp)
     mock_session.get = AsyncMock(return_value=subtitle_resp)
@@ -67,7 +68,58 @@ async def test_synthesize_success(service):
     assert result is not None
     audio_bytes, subtitles = result
     assert audio_bytes == fake_audio
-    assert subtitles == fake_subtitles
+    # After grouping, only text/time_begin/time_end are kept
+    assert len(subtitles) == 1
+    assert subtitles[0]["text"] == "測試"
+    assert subtitles[0]["time_begin"] == 0.0
+    assert subtitles[0]["time_end"] == 2000.0
+
+
+def test_group_subtitles_merges_short_words():
+    """Word-level subtitles should be merged into phrases ≤ 20 chars."""
+    subs = [
+        {"text": "高雄", "time_begin": 400, "time_end": 720},
+        {"text": "楠梓", "time_begin": 720, "time_end": 1200},
+        {"text": "京城", "time_begin": 1280, "time_end": 1680},
+        {"text": "水", "time_begin": 1680, "time_end": 1920},
+        {"text": "森林", "time_begin": 1920, "time_end": 2480},
+    ]
+    groups = _group_subtitles(subs)
+    assert len(groups) == 1
+    assert groups[0]["text"] == "高雄楠梓京城水森林"
+    assert groups[0]["time_begin"] == 400
+    assert groups[0]["time_end"] == 2480
+
+
+def test_group_subtitles_splits_at_char_limit():
+    """Groups should split when exceeding _MAX_GROUP_CHARS (20)."""
+    subs = [
+        {"text": "一進門就是方正客廳", "time_begin": 0, "time_end": 2000},
+        {"text": "空間坪效超級高", "time_begin": 2000, "time_end": 4000},
+        {"text": "全部都是大面窗", "time_begin": 4000, "time_end": 6000},
+    ]
+    groups = _group_subtitles(subs)
+    # "一進門就是方正客廳" (9) + "空間坪效超級高" (7) = 16 ≤ 20 → merge
+    # 16 + "全部都是大面窗" (7) = 23 > 20 → new group
+    assert len(groups) == 2
+    assert groups[0]["text"] == "一進門就是方正客廳空間坪效超級高"
+    assert groups[1]["text"] == "全部都是大面窗"
+
+
+def test_group_subtitles_splits_on_gap():
+    """A gap > 300ms between words should force a new group."""
+    subs = [
+        {"text": "高雄", "time_begin": 0, "time_end": 500},
+        {"text": "楠梓", "time_begin": 900, "time_end": 1400},  # 400ms gap
+    ]
+    groups = _group_subtitles(subs)
+    assert len(groups) == 2
+    assert groups[0]["text"] == "高雄"
+    assert groups[1]["text"] == "楠梓"
+
+
+def test_group_subtitles_empty():
+    assert _group_subtitles([]) == []
 
 
 @pytest.mark.asyncio
@@ -130,9 +182,10 @@ async def test_synthesize_retries_on_first_failure(service):
         "base_resp": {"status_code": 0},
     })
 
+    import json as _json
     subtitle_resp = AsyncMock()
     subtitle_resp.status = 200
-    subtitle_resp.json = AsyncMock(return_value=fake_subtitles)
+    subtitle_resp.read = AsyncMock(return_value=_json.dumps(fake_subtitles).encode())
 
     mock_session.post = AsyncMock(side_effect=[fail_resp, ok_resp])
     mock_session.get = AsyncMock(return_value=subtitle_resp)
@@ -143,4 +196,6 @@ async def test_synthesize_retries_on_first_failure(service):
 
     assert result is not None
     audio_bytes, subtitles = result
-    assert audio_bytes == fake_audio
+    assert audio_bytes == b"retry-audio"
+    assert len(subtitles) == 1
+    assert subtitles[0]["text"] == "ok"

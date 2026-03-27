@@ -25,6 +25,51 @@ _SECTION_MARKER_RE = re.compile(r"^\[.+?\]\s*$", re.MULTILINE)
 
 _BASE_URL = "https://api.minimaxi.chat/v1"
 
+# Subtitle grouping: merge word-level subtitles into readable phrases
+_MAX_GROUP_CHARS = 20  # fits within 2 lines of 16 chars
+_MAX_GROUP_GAP_MS = 300  # force new group if gap between words exceeds this
+
+
+def _group_subtitles(subtitles: list[dict]) -> list[dict]:
+    """Merge consecutive word-level subtitles into short phrase groups."""
+    if not subtitles:
+        return []
+
+    groups: list[dict] = []
+    current: dict | None = None
+
+    for sub in subtitles:
+        text = sub.get("text", "").strip()
+        if not text:
+            continue
+
+        if current is None:
+            current = {
+                "text": text,
+                "time_begin": sub["time_begin"],
+                "time_end": sub["time_end"],
+            }
+            continue
+
+        gap = sub["time_begin"] - current["time_end"]
+        merged_len = len(current["text"]) + len(text)
+
+        if merged_len <= _MAX_GROUP_CHARS and gap <= _MAX_GROUP_GAP_MS:
+            current["text"] += text
+            current["time_end"] = sub["time_end"]
+        else:
+            groups.append(current)
+            current = {
+                "text": text,
+                "time_begin": sub["time_begin"],
+                "time_end": sub["time_end"],
+            }
+
+    if current:
+        groups.append(current)
+
+    return groups
+
 
 class MiniMaxService:
     def __init__(
@@ -141,6 +186,9 @@ class MiniMaxService:
             for sub in subtitles:
                 if "text" in sub:
                     sub["text"] = _s2t.convert(sub["text"])
+
+            # Merge word-level subtitles into readable phrases
+            subtitles = _group_subtitles(subtitles)
 
             return (audio_bytes, subtitles)
 
