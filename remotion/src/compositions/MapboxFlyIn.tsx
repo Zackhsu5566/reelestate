@@ -22,7 +22,15 @@ export const FLY_DURATION_FRAMES = 120; // 4s at 30fps
 export const POI_START_FRAME = 150; // POIs appear at 5s
 
 const POI_STAGGER = 60; // 2s between each POI
-const POI_ANIM_FRAMES = 15; // ~0.5s animation duration
+const LINE_DRAW_FRAMES = 20; // ~0.67s connector line animation
+const DOT_ANIM_FRAMES = 8; // ~0.27s pin dot pop-in
+
+// Left-side label layout
+const LABEL_LEFT = 40;
+const LABEL_TOP = 280;
+const LABEL_GAP = 110;
+const LABEL_CARD_WIDTH = 260;
+const LABEL_CARD_HEIGHT = 72;
 
 const CATEGORY_COLORS: Record<POI["category"], string> = {
   mrt: "#00B4D8",
@@ -46,7 +54,7 @@ function cameraAtFrame(frame: number) {
   const t = Math.min(frame / FLY_DURATION_FRAMES, 1);
   const p = Easing.out(Easing.cubic)(t);
   return {
-    zoom: interpolate(p, [0, 1], [10, 13]),
+    zoom: interpolate(p, [0, 1], [10, 15]),
     pitch: interpolate(p, [0, 1], [0, 30]),
     bearing: interpolate(p, [0, 1], [0, 0]),
   };
@@ -150,102 +158,146 @@ export const MapboxFlyIn: React.FC<Props> = ({
     return () => continueRender(handle);
   }, [frame, mapReady]);
 
+  // All labels fade in together at POI_START_FRAME
+  const labelsOpacity = pois.length > 0
+    ? interpolate(frame, [POI_START_FRAME, POI_START_FRAME + 15], [0, 1], {
+        extrapolateLeft: "clamp", extrapolateRight: "clamp",
+      })
+    : 0;
+
+  // Build a lookup: POI index → screen coordinates
+  const screenByIndex = new Map<number, ScreenPOI>();
+  for (const sp of screenPois) {
+    const idx = pois.findIndex((p) => p.name === sp.name && p.category === sp.category);
+    if (idx >= 0) screenByIndex.set(idx, sp);
+  }
+
   return (
     <>
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
 
-      {/* POI markers overlay */}
-      {screenPois.map((poi, i) => {
-        const delay = POI_START_FRAME + i * POI_STAGGER;
-        const progress = interpolate(
-          frame,
-          [delay, delay + POI_ANIM_FRAMES],
-          [0, 1],
-          {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-            easing: Easing.out(Easing.cubic),
-          },
-        );
-
-        const scale = interpolate(progress, [0, 1], [0.3, 1]);
+      {/* Left-side POI label cards */}
+      {pois.map((poi, i) => {
         const color = CATEGORY_COLORS[poi.category] || CATEGORY_COLORS.other;
+        const delay = POI_START_FRAME + i * POI_STAGGER;
+        const isActive = frame >= delay;
+
+        // Dim initially, brighten when connector starts
+        const brightness = isActive
+          ? interpolate(frame, [delay, delay + 10], [0.5, 1], {
+              extrapolateLeft: "clamp", extrapolateRight: "clamp",
+            })
+          : 0.5;
 
         return (
           <div
-            key={`${poi.name}-${i}`}
+            key={`label-${i}`}
             style={{
               position: "absolute",
-              left: poi.x,
-              top: poi.y,
-              transform: `translate(-50%, -100%) scale(${scale})`,
-              opacity: progress,
+              left: LABEL_LEFT,
+              top: LABEL_TOP + i * LABEL_GAP,
+              width: LABEL_CARD_WIDTH,
+              height: LABEL_CARD_HEIGHT,
+              opacity: labelsOpacity * brightness,
+              background: "rgba(0,0,0,0.75)",
+              backdropFilter: "blur(6px)",
+              borderRadius: 12,
+              padding: "10px 16px",
               display: "flex",
-              flexDirection: "column",
               alignItems: "center",
-              pointerEvents: "none",
+              gap: 12,
+              border: `2px solid ${isActive ? color : "rgba(255,255,255,0.2)"}`,
+              pointerEvents: "none" as const,
               fontFamily,
             }}
           >
-            {/* Label */}
+            {/* Color dot */}
             <div
               style={{
-                background: "rgba(0,0,0,0.75)",
-                backdropFilter: "blur(6px)",
-                borderRadius: 10,
-                padding: "8px 18px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 2,
-                border: `2px solid ${color}`,
+                width: 14,
+                height: 14,
+                borderRadius: "50%",
+                background: color,
+                flexShrink: 0,
               }}
-            >
-              <div
-                style={{
-                  color: "white",
-                  fontSize: 24,
-                  fontWeight: 700,
-                  whiteSpace: "nowrap",
-                }}
-              >
+            />
+            <div>
+              <div style={{ color: "#fff", fontSize: 22, fontWeight: 700, whiteSpace: "nowrap" }}>
                 {poi.name}
               </div>
-              <div
-                style={{
-                  color: "rgba(255,255,255,0.7)",
-                  fontSize: 18,
-                  fontWeight: 400,
-                  whiteSpace: "nowrap",
-                }}
-              >
+              <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 16, fontWeight: 400 }}>
                 {poi.distance}
               </div>
             </div>
-
-            {/* Stem line */}
-            <div
-              style={{
-                width: 2,
-                height: 60,
-                background: `linear-gradient(to bottom, ${color}, rgba(255,255,255,0.3))`,
-              }}
-            />
-
-            {/* Pin dot */}
-            <div
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: "50%",
-                background: color,
-                border: "2px solid #fff",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-              }}
-            />
           </div>
         );
       })}
+
+      {/* SVG connector lines + pin dots */}
+      <svg
+        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+        width={1080}
+        height={1920}
+        viewBox="0 0 1080 1920"
+      >
+        {pois.map((poi, i) => {
+          const sp = screenByIndex.get(i);
+          if (!sp) return null;
+
+          const color = CATEGORY_COLORS[poi.category] || CATEGORY_COLORS.other;
+          const delay = POI_START_FRAME + i * POI_STAGGER;
+
+          // Connector line: from right edge of label card → map coordinate
+          const fromX = LABEL_LEFT + LABEL_CARD_WIDTH;
+          const fromY = LABEL_TOP + i * LABEL_GAP + LABEL_CARD_HEIGHT / 2;
+          const toX = sp.x;
+          const toY = sp.y;
+
+          const dx = toX - fromX;
+          const dy = toY - fromY;
+          const length = Math.sqrt(dx * dx + dy * dy);
+
+          const lineProgress = interpolate(
+            frame,
+            [delay, delay + LINE_DRAW_FRAMES],
+            [0, 1],
+            { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.out(Easing.cubic) },
+          );
+
+          // Pin dot pops in after line finishes
+          const dotDelay = delay + LINE_DRAW_FRAMES;
+          const dotScale = interpolate(
+            frame,
+            [dotDelay, dotDelay + DOT_ANIM_FRAMES],
+            [0, 1],
+            { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.out(Easing.cubic) },
+          );
+
+          return (
+            <g key={`connector-${i}`}>
+              {lineProgress > 0 && (
+                <line
+                  x1={fromX}
+                  y1={fromY}
+                  x2={toX}
+                  y2={toY}
+                  stroke={color}
+                  strokeWidth={2}
+                  strokeDasharray={length}
+                  strokeDashoffset={length * (1 - lineProgress)}
+                  opacity={0.8}
+                />
+              )}
+              {dotScale > 0 && (
+                <>
+                  <circle cx={toX} cy={toY} r={12 * dotScale} fill={color} opacity={0.3} />
+                  <circle cx={toX} cy={toY} r={8 * dotScale} fill={color} stroke="#fff" strokeWidth={2} />
+                </>
+              )}
+            </g>
+          );
+        })}
+      </svg>
     </>
   );
 };
