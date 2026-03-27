@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Traditional → Simplified Chinese converter (MiniMax TTS trained on Simplified)
 _t2s = opencc.OpenCC("t2s")
-_s2t = opencc.OpenCC("s2t")
+_s2t = opencc.OpenCC("s2twp")
 
 # Limit parallel TTS submissions at module level so all instances share the cap
 _tts_semaphore = asyncio.Semaphore(5)
