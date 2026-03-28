@@ -82,6 +82,21 @@ async def _handle_image(user_id: str, event: dict) -> None:
         return
 
     # idle / collecting_photos / awaiting_label 都可以加照片
+    # 檢查總照片數上限（所有空間 + pending + exterior）
+    MAX_PHOTOS_PER_JOB = 15
+    state = await conv_manager.get(user_id)
+    total = (
+        sum(len(s["photos"]) for s in state["spaces"])
+        + len(state["pending_photos"])
+        + (1 if state.get("exterior_photo") else 0)
+    )
+    if total >= MAX_PHOTOS_PER_JOB:
+        await line_bot.send_message(
+            user_id,
+            f"⚠️ 每次最多上傳 {MAX_PHOTOS_PER_JOB} 張照片，已達上限。\n請輸入「完成」或「全部完成」繼續。",
+        )
+        return
+
     count = await conv_manager.add_photo(user_id, photo_url)
     await line_bot.send_photo_received(user_id, count)
 
