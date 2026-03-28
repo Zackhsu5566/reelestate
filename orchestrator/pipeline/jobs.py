@@ -23,7 +23,7 @@ from orchestrator.services.r2 import r2_service
 from orchestrator.services.render import render_service
 from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, PROMPT_PULL_OUT, PROMPT_PAN
 from orchestrator.line.bot import line_bot
-from orchestrator.services.audio_align import split_by_markers, map_sections_to_scenes, assemble_audio, MAX_HOOK_IMAGES
+from orchestrator.services.audio_align import split_by_markers, map_sections_to_scenes, assemble_audio, extend_scenes_for_audio, MAX_HOOK_IMAGES
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +181,24 @@ async def _align_and_upload_audio(
     )
 
     section_map = map_sections_to_scenes(sections, scenes, hook_image_count)
+
+    # Extend scenes if TTS audio exceeds scene duration, then recalculate
+    if extend_scenes_for_audio(scenes, section_results, section_map):
+        render_input["scenes"] = scenes
+        section_map = map_sections_to_scenes(sections, scenes, hook_image_count)
+
+        # Save overrides so _build_render_input uses extended durations
+        overrides: dict[str, int] = {}
+        for scene in scenes:
+            if scene["type"] == "map":
+                overrides["map"] = scene["durationInFrames"]
+            elif scene["type"] == "stats":
+                overrides["stats"] = scene["durationInFrames"]
+            elif scene["type"] == "cta":
+                overrides["cta"] = scene["durationInFrames"]
+        fresh_state.scene_duration_overrides = overrides
+        await store.save(fresh_state)
+
     audio_bytes, subtitles = assemble_audio(section_results, section_map)
 
     # Log duration (observability)
@@ -755,10 +773,15 @@ async def _build_render_input(state: JobState) -> dict:
                 bg_src = photos[0]
                 break
 
+    overrides = state.scene_duration_overrides or {}
     if map_scene:
+        if "map" in overrides:
+            map_scene["durationInFrames"] = overrides["map"]
         scenes.append(map_scene)
-    scenes.append({"type": "stats", "durationInFrames": STATS_FRAMES, **({"backgroundSrc": bg_src} if bg_src else {})})
-    scenes.append({"type": "cta", "durationInFrames": CTA_FRAMES, **({"backgroundSrc": bg_src} if bg_src else {})})
+    stats_frames = overrides.get("stats", STATS_FRAMES)
+    cta_frames = overrides.get("cta", CTA_FRAMES)
+    scenes.append({"type": "stats", "durationInFrames": stats_frames, **({"backgroundSrc": bg_src} if bg_src else {})})
+    scenes.append({"type": "cta", "durationInFrames": cta_frames, **({"backgroundSrc": bg_src} if bg_src else {})})
 
     render_input = {
         "title": agent.title or "",

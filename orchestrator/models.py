@@ -119,6 +119,9 @@ class JobState(BaseModel):
     thumbnail_url: str | None = None
     final_url: str | None = None
 
+    # Scene duration overrides (set by audio alignment when TTS exceeds scene length)
+    scene_duration_overrides: dict[str, int] = {}
+
     # TTS
     narration_enabled: bool = False
     narration_gate_status: str | None = None

@@ -161,6 +161,58 @@ def map_sections_to_scenes(
     return result
 
 
+def extend_scenes_for_audio(
+    scenes: list[dict],
+    section_results: list[dict],
+    section_map: dict[str, dict],
+) -> bool:
+    """Extend scene durationInFrames if TTS audio exceeds available duration.
+
+    Mutates scenes in-place. Returns True if any scene was extended.
+    """
+    import math
+
+    # Build marker → scene index lookup
+    marker_to_scene: dict[str, int] = {}
+    for i, scene in enumerate(scenes):
+        if scene["type"] == "map":
+            marker_to_scene["MAP"] = i
+        elif scene["type"] == "stats":
+            marker_to_scene["STATS"] = i
+        elif scene["type"] == "cta":
+            marker_to_scene["CTA"] = i
+        elif scene["type"] == "clip" and scene.get("label") and scene["label"] != "外觀":
+            if scene["label"] not in marker_to_scene:
+                marker_to_scene[scene["label"]] = i
+
+    changed = False
+    for section in section_results:
+        marker = section["marker"]
+        mapping = section_map.get(marker)
+        if mapping is None:
+            continue
+        audio = AudioSegment.from_mp3(BytesIO(section["audio_bytes"]))
+        audio_ms = len(audio)
+        available_ms = mapping["available_ms"]
+        if audio_ms <= available_ms:
+            continue
+
+        scene_idx = marker_to_scene.get(marker)
+        if scene_idx is None:
+            continue
+
+        extra_ms = audio_ms - available_ms
+        extra_frames = math.ceil(extra_ms / 1000 * FPS)
+        scenes[scene_idx]["durationInFrames"] += extra_frames
+        logger.info(
+            "Extended scene %s by %d frames (+%.1fs) to fit narration",
+            marker, extra_frames, extra_ms / 1000,
+        )
+        changed = True
+
+    return changed
+
+
 # ---------------------------------------------------------------------------
 # Audio assembly: pad silence between sections and concatenate
 # ---------------------------------------------------------------------------
