@@ -321,9 +321,11 @@ async def step_analyze(state: JobState) -> None:
                 prop.line = prop.line or profile.line_id
                 await store.save(state)
 
-    # Copy narration text for TTS
+    # Copy narration text for TTS (convert to Traditional Chinese for LINE display)
     if state.narration_enabled and state.agent_result and state.agent_result.narration:
-        state.narration_text = state.agent_result.narration
+        import opencc
+        _s2twp = opencc.OpenCC("s2twp")
+        state.narration_text = _s2twp.convert(state.agent_result.narration)
         await store.save(state)
 
 
