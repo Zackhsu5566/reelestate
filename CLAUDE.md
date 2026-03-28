@@ -16,9 +16,9 @@
 ```
 CLIP_FRAMES       = 3.5s = 105 frames（每個房間，1.25x 速度）
 CLIP_SMALL_FRAMES = 2.8s = 84 frames（小空間）
-MAP_FRAMES        = 10s  = 300 frames（地圖 + POI 生活機能，無 zoom）
-STATS_FRAMES      = 7s   = 210 frames
-CTA_FRAMES        = 5s   = 150 frames
+MAP_FRAMES        = 10s  = 300 frames（地圖 + POI，zoom 13，🏠 marker，可被旁白拉長）
+STATS_FRAMES      = 7s   = 210 frames（可被旁白拉長）
+CTA_FRAMES        = 5s   = 150 frames（可被旁白拉長）
 FADE_FRAMES       = 10 frames（fade 轉場）
 ```
 
