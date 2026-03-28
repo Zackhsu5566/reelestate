@@ -333,6 +333,14 @@ class LineBot:
                         "spacing": "xs",
                         "contents": field_rows,
                     },
+                    {"type": "separator"},
+                    {
+                        "type": "text",
+                        "text": "💡 可以直接貼上房屋介紹文字，AI 會自動擷取重點",
+                        "size": "xs",
+                        "color": "#888888",
+                        "wrap": True,
+                    },
                 ],
             },
         }

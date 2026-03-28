@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     minimax_poll_interval: float = 3.0
     minimax_poll_timeout: float = 120.0
     # BGM
-    bgm_url: str = ""
+    bgm_url: str = "https://assets.replowapp.com/BGM/vibehorn-background-music-496933.mp3"
 
     # General
     max_retries: int = 3
