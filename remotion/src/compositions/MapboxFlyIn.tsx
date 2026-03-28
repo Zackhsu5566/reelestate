@@ -50,7 +50,7 @@ type Props = {
   pois?: POI[];
 };
 
-const CAMERA = { zoom: 15, pitch: 30, bearing: 0 };
+const CAMERA = { zoom: 13, pitch: 30, bearing: 0 };
 
 function cameraAtFrame(_frame: number) {
   return CAMERA;
@@ -107,13 +107,13 @@ export const MapboxFlyIn: React.FC<Props> = ({
           }
         }
       }
-      // Pin marker
+      // Pin marker — house emoji
       const el = document.createElement("div");
       el.style.cssText = `
-        width: 28px; height: 28px; border-radius: 50%;
-        background: #FFD700; border: 3px solid #fff;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        font-size: 36px; line-height: 1;
+        filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
       `;
+      el.textContent = "🏠";
       new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
 
       mapRef.current = map;
