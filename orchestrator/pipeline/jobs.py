@@ -605,8 +605,7 @@ async def step_deliver(state: JobState) -> None:
 # ── Build RenderInput ──
 
 MAP_FRAMES = 300  # 10s — static map + POI markers (no zoom animation)
-CLIP_FRAMES = 105  # 3.5s (video 1.25x speed)
-CLIP_SMALL_FRAMES = 84  # 2.8s (video 1.25x speed)
+CLIP_FRAMES = 75  # 2.5s (video 2x speed)
 STATS_FRAMES = 210  # 7s — enough for 5 items stagger animation + hold
 CTA_FRAMES = 150  # 5s
 
@@ -779,9 +778,7 @@ async def _build_render_input(state: JobState) -> dict:
         if not photos:
             continue
 
-        input_space = _find_input_space(state, si)
-        is_small = input_space.is_small_space if input_space else False
-        duration = CLIP_SMALL_FRAMES if is_small else CLIP_FRAMES
+        duration = CLIP_FRAMES
         prefix = _build_task_key_prefix(si)
         has_staging = has_staging_template and get_staging_prompt(state.staging_template, space.name) is not None
 

@@ -14,8 +14,7 @@
 
 ### 時間配置（常數）
 ```
-CLIP_FRAMES       = 3.5s = 105 frames（每個房間，1.25x 速度）
-CLIP_SMALL_FRAMES = 2.8s = 84 frames（小空間）
+CLIP_FRAMES       = 2.5s = 75 frames（每個房間，2x 速度）
 MAP_FRAMES        = 10s  = 300 frames（地圖 + POI，zoom 13，🏠 marker，可被旁白拉長）
 STATS_FRAMES      = 7s   = 210 frames（可被旁白拉長）
 CTA_FRAMES        = 5s   = 150 frames（可被旁白拉長）
