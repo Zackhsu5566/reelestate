@@ -13,7 +13,7 @@ import uuid as _uuid
 import httpx
 
 from orchestrator.config import settings
-from orchestrator.models import AssetTask, JobState, JobStatus, SpaceInfo, SpaceInput
+from orchestrator.models import AssetTask, JobState, JobStatus, POIInfo, SpaceInfo, SpaceInput
 from orchestrator.staging_prompts import get_staging_prompt
 from orchestrator.pipeline.state import store
 from orchestrator.stores.user import UserStore
@@ -645,6 +645,22 @@ async def _geocode(address: str) -> tuple[float, float] | None:
         return None
 
 
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Return distance in km between two lat/lng points."""
+    import math
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = (math.sin(dlat / 2) ** 2
+         + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2))
+         * math.sin(dlng / 2) ** 2)
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+# POI 超過此距離（km）視為 geocoding 錯誤，直接丟棄
+_POI_MAX_DISTANCE_KM = 3.0
+
+
 async def _geocode_poi(
     poi_name: str,
     prop_lat: float,
@@ -685,7 +701,17 @@ async def _geocode_poi(
         if not places:
             return None
         loc = places[0]["location"]
-        result = {"lat": loc["latitude"], "lng": loc["longitude"]}
+        poi_lat, poi_lng = loc["latitude"], loc["longitude"]
+
+        # 距離驗證：丟棄超過閾值的結果（Google locationBias 不是硬限制）
+        dist = _haversine_km(prop_lat, prop_lng, poi_lat, poi_lng)
+        if dist > _POI_MAX_DISTANCE_KM:
+            logger.warning(
+                f"POI '{poi_name}' geocoded too far ({dist:.1f}km), discarding"
+            )
+            return None
+
+        result = {"lat": poi_lat, "lng": poi_lng}
         await store.set_geo_cache(cache_key, result)
         return result["lat"], result["lng"]
     except Exception as e:
@@ -701,15 +727,30 @@ async def _build_render_input(state: JobState) -> dict:
     # Geocode address for Mapbox map
     geo = await _geocode(prop.address or prop.location or "")
 
-    # Geocode POIs via Google Places
+    # Geocode POIs via Google Places + distance validation
     if prop.pois and geo:
         prop_lat, prop_lng = geo
+        valid_pois: list[POIInfo] = []
         for poi in prop.pois:
             if poi.lat is not None and poi.lng is not None:
-                continue
+                # 驗證 agent 回傳的座標是否合理
+                dist = _haversine_km(prop_lat, prop_lng, poi.lat, poi.lng)
+                if dist > _POI_MAX_DISTANCE_KM:
+                    logger.warning(
+                        f"POI '{poi.name}' has pre-set coords {dist:.1f}km away, "
+                        "re-geocoding via Google Places"
+                    )
+                    poi.lat, poi.lng = None, None  # type: ignore[assignment]
+                else:
+                    valid_pois.append(poi)
+                    continue
             coords = await _geocode_poi(poi.name, prop_lat, prop_lng)
             if coords:
                 poi.lat, poi.lng = coords
+                valid_pois.append(poi)
+            else:
+                logger.warning(f"POI '{poi.name}' could not be geocoded, removing")
+        prop.pois = valid_pois
 
     # Map scene (POI) — inserted before stats later
     map_scene: dict | None = None
