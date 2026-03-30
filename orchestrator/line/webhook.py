@@ -450,8 +450,23 @@ async def _handle_postback(user_id: str, data: str) -> None:
                 await conv_manager._r.set(gate_key, "edit_pending", ex=3600)
                 state = await conv_manager.get(user_id)
                 state["state"] = ConversationState.editing_narration
+                state["job_id"] = job_id
                 await conv_manager._save(user_id, state)
-                await line_bot.send_message(user_id, "請輸入修改後的講稿：")
+                # 發送純文字版講稿讓客戶可以複製修改
+                from orchestrator.pipeline.state import store as _store
+                job_state = await _store.get(job_id)
+                if job_state and job_state.narration_text:
+                    copyable = line_bot._format_narration_preview(
+                        job_state.narration_text,
+                    )
+                    await line_bot.send_message(
+                        user_id,
+                        f"{copyable}\n\n"
+                        "── 請複製上方講稿修改後貼回 ──\n"
+                        "⚠️ 標題行（🎬🏠🗺️📊📞 開頭）請勿更動",
+                    )
+                else:
+                    await line_bot.send_message(user_id, "請輸入修改後的講稿：")
         return
 
     # Existing approve/reject handling
