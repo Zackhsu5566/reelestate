@@ -92,18 +92,18 @@ def test_group_subtitles_merges_short_words():
 
 
 def test_group_subtitles_splits_at_char_limit():
-    """Groups should split when exceeding _MAX_GROUP_CHARS (20)."""
+    """Groups should split when exceeding _MAX_GROUP_CHARS (14)."""
     subs = [
         {"text": "一進門就是方正客廳", "time_begin": 0, "time_end": 2000},
         {"text": "空間坪效超級高", "time_begin": 2000, "time_end": 4000},
         {"text": "全部都是大面窗", "time_begin": 4000, "time_end": 6000},
     ]
     groups = _group_subtitles(subs)
-    # "一進門就是方正客廳" (9) + "空間坪效超級高" (7) = 16 ≤ 20 → merge
-    # 16 + "全部都是大面窗" (7) = 23 > 20 → new group
+    # "一進門就是方正客廳" (9) + "空間坪效超級高" (7) = 16 > 14 → new group
+    # "空間坪效超級高" (7) + "全部都是大面窗" (7) = 14 ≤ 14 → merge
     assert len(groups) == 2
-    assert groups[0]["text"] == "一進門就是方正客廳空間坪效超級高"
-    assert groups[1]["text"] == "全部都是大面窗"
+    assert groups[0]["text"] == "一進門就是方正客廳"
+    assert groups[1]["text"] == "空間坪效超級高全部都是大面窗"
 
 
 def test_group_subtitles_splits_on_gap():
