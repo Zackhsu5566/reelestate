@@ -5,35 +5,6 @@ import type { NarrationSubtitle } from "../types";
 const { fontFamily } = loadFont("normal", { weights: ["700"] });
 
 const FADE_FRAMES = 5;
-const MAX_CHARS_PER_LINE = 16;
-const MAX_LINES = 2;
-
-/** Split long text into lines of at most `maxChars` characters,
- *  breaking at punctuation or natural boundaries when possible.
- *  Caps output to MAX_LINES to prevent overflowing the subtitle area. */
-function wrapText(text: string, maxChars: number = MAX_CHARS_PER_LINE): string[] {
-  if (text.length <= maxChars) return [text];
-
-  const lines: string[] = [];
-  let remaining = text;
-
-  while (remaining.length > maxChars && lines.length < MAX_LINES - 1) {
-    // Look for a punctuation break point within the limit
-    let breakAt = -1;
-    for (let i = maxChars - 1; i >= maxChars / 2; i--) {
-      if (/[，、。！？；：,.]/.test(remaining[i])) {
-        breakAt = i + 1;
-        break;
-      }
-    }
-    if (breakAt === -1) breakAt = maxChars;
-
-    lines.push(remaining.slice(0, breakAt));
-    remaining = remaining.slice(breakAt);
-  }
-  if (remaining) lines.push(remaining);
-  return lines.slice(0, MAX_LINES);
-}
 
 type Props = {
   subtitles: NarrationSubtitle[];
@@ -66,7 +37,7 @@ export const SubtitleOverlay: React.FC<Props> = ({ subtitles }) => {
     <div
       style={{
         position: "absolute",
-        bottom: 120,
+        bottom: 560,
         left: 40,
         right: 40,
         display: "flex",
@@ -76,27 +47,17 @@ export const SubtitleOverlay: React.FC<Props> = ({ subtitles }) => {
     >
       <div
         style={{
-          background: "rgba(0, 0, 0, 0.7)",
-          backdropFilter: "blur(8px)",
-          borderRadius: 12,
-          padding: "16px 28px",
-          maxWidth: 900,
+          color: "#fff",
+          fontSize: 52,
+          fontWeight: 700,
+          fontFamily,
+          textAlign: "center",
+          lineHeight: 1.4,
+          WebkitTextStroke: "3px #000",
+          textShadow: "0 3px 10px #000",
         }}
       >
-        <div
-          style={{
-            color: "#fff",
-            fontSize: 36,
-            fontWeight: 700,
-            fontFamily,
-            textAlign: "center",
-            lineHeight: 1.4,
-          }}
-        >
-          {wrapText(active.text).map((line, i) => (
-            <div key={i}>{line}</div>
-          ))}
-        </div>
+        {active.text}
       </div>
     </div>
   );
