@@ -83,6 +83,7 @@ Orchestrator 會以 JSON 傳入：
 - 若描述只提到設施名但無距離，估算並加「約」字（如「步行約5分鐘」），`source: "extracted"`
 - 若 raw_text 完全沒提到附近設施，根據地址推薦 2-3 個最可能的生活機能（最近捷運站、便利商店/超市、公園），`source: "inferred"`
 - `category` 限定值：`mrt` | `supermarket` | `park` | `school` | `hospital` | `other`
+- `name` 盡量精簡，最多 7 個中文字（例如「全聯福利中心」→「全聯」，「高雄醫學大學」→「高雄醫大」）
 - 建議產出 2-4 個 POI，不要超過 5 個
 
 ### 2. 生成標題
