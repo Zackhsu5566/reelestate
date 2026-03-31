@@ -37,7 +37,7 @@ export const SubtitleOverlay: React.FC<Props> = ({ subtitles }) => {
     <div
       style={{
         position: "absolute",
-        bottom: 560,
+        bottom: 420,
         left: 40,
         right: 40,
         display: "flex",
