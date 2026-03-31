@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
+import re
 import subprocess
 import tempfile
 import time
@@ -54,6 +55,73 @@ def _find_input_space(state: JobState, space_index: int) -> SpaceInput | None:
     if space_index < len(state.spaces_input):
         return state.spaces_input[space_index]
     return None
+
+
+# Per-section character limits (must match agent/SKILL.md)
+_SECTION_CHAR_LIMITS: dict[str, int] = {
+    "OPENING": 15,
+    "MAP": 40,
+    "STATS": 28,
+    "CTA": 20,
+}
+_DEFAULT_CLIP_CHAR_LIMIT = 10
+_PAUSE_RE = re.compile(r"<#[\d.]+#>")
+_PUNCT_RE = re.compile(r"[，。！？、；：「」（）—…,.?;:\"'()\-]")
+
+
+def _count_spoken_chars(text: str) -> int:
+    """Count characters that will be spoken (exclude pauses and punctuation)."""
+    clean = _PAUSE_RE.sub("", text)
+    clean = _PUNCT_RE.sub("", clean)
+    return len(clean)
+
+
+def _truncate_sections(sections: list[dict], job_id: str) -> None:
+    """Truncate section text that exceeds character limits (in-place).
+
+    Finds the best sentence boundary (at punctuation) to cut at.
+    """
+    for section in sections:
+        marker = section["marker"]
+        limit = _SECTION_CHAR_LIMITS.get(marker, _DEFAULT_CLIP_CHAR_LIMIT)
+        text = section["text"]
+        original_count = _count_spoken_chars(text)
+        if original_count <= limit:
+            continue
+
+        # Try to cut at sentence boundary first
+        parts = re.split(r"((?:<#[\d.]+#>)?[，。！？、；：])", text)
+        result = ""
+        for part in parts:
+            candidate = result + part
+            if _count_spoken_chars(candidate) > limit and result:
+                break
+            result = candidate
+
+        # If still over limit (first sentence already too long), hard-cut
+        if _count_spoken_chars(result) > limit or not result:
+            count = 0
+            result = ""
+            i = 0
+            while i < len(text):
+                # Skip pause markers
+                m = _PAUSE_RE.match(text, i)
+                if m:
+                    result += m.group()
+                    i = m.end()
+                    continue
+                result += text[i]
+                if not _PUNCT_RE.match(text[i]):
+                    count += 1
+                if count >= limit:
+                    break
+                i += 1
+
+        section["text"] = result.rstrip("，、；：")
+        logger.info(
+            "Truncated section %s from %d to %d chars: job=%s",
+            marker, original_count, _count_spoken_chars(section["text"]), job_id,
+        )
 
 
 async def _narration_gate_poll(job_id: str, redis) -> tuple[str, str | None]:
@@ -118,6 +186,9 @@ async def _task_tts(
     if not sections:
         logger.warning("No section markers found in narration, skipping TTS: job=%s", job_id)
         return None
+
+    # Truncate sections that exceed character limits to prevent audio overlap
+    _truncate_sections(sections, job_id)
 
     # Per-section TTS (parallel)
     # Note: minimax.synthesize() already has built-in 1-retry (see minimax.py:56-68)
