@@ -50,7 +50,7 @@ type Props = {
   pois?: POI[];
 };
 
-const CAMERA = { zoom: 13, pitch: 30, bearing: 0 };
+const CAMERA = { zoom: 15, pitch: 30, bearing: 0 };
 
 function cameraAtFrame(_frame: number) {
   return CAMERA;
