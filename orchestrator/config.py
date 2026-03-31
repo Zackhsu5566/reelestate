@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     minimax_poll_interval: float = 3.0
     minimax_poll_timeout: float = 120.0
     # BGM
-    bgm_url: str = "https://assets.replowapp.com/BGM/eliveta-background-music-491190.mp3"
+    bgm_url: str = "https://assets.replowapp.com/BGM/sigmamusicart-background-music-good-vibes-468506.mp3"
 
     # General
     max_retries: int = 3
