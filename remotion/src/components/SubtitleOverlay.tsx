@@ -53,11 +53,10 @@ export const SubtitleOverlay: React.FC<Props> = ({ subtitles }) => {
           fontFamily,
           textAlign: "center",
           lineHeight: 1.4,
-          WebkitTextStroke: "1.5px rgba(0,0,0,0.6)",
-          textShadow: "0 1px 3px rgba(0,0,0,0.3)",
+          WebkitTextStroke: "1px rgba(0,0,0,0.4)",
         }}
       >
-        {active.text}
+        {active.text.replace(/[，。、？；：「」（）—…,.?;:"'()\-]/g, "")}
       </div>
     </div>
   );
