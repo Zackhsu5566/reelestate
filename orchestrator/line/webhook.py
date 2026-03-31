@@ -256,7 +256,8 @@ async def _handle_text(user_id: str, text: str) -> None:
                 )
                 return
         gate_key = f"narration_gate:{job_id}"
-        await conv_manager._r.set(gate_key, f"edit:{text}", ex=3600)
+        parsed = line_bot._parse_edited_narration(text)
+        await conv_manager._r.set(gate_key, f"edit:{parsed}", ex=3600)
         state["state"] = ConversationState.processing
         await conv_manager._save(user_id, state)
         await line_bot.send_message(user_id, "講稿已更新，正在生成旁白...")
