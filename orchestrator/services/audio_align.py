@@ -20,7 +20,7 @@ _MARKER_RE = re.compile(r"^\[(.+?)\]\s*$", re.MULTILINE)
 # Source of truth: remotion/src/ReelEstateVideo.tsx lines 15-19
 FADE_FRAMES = 10
 WIPE_FRAMES = 28
-STAGING_FRAMES = 90
+STAGING_FRAMES = 60
 HOLD_FRAMES = 35
 HOOK_FRAMES_PER_IMAGE = 30
 MAX_HOOK_IMAGES = 3

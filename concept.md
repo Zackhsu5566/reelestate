@@ -129,7 +129,7 @@ Remotion `SubtitleOverlay` 根據時間戳顯示字幕，白字外擴描邊（52
 | BGM 音量（無旁白） | 0.15 |
 | BGM 音量（有旁白） | 0.05 |
 | 旁白音量 | 1.0 |
-| BGM URL | `vibehorn-background-music-496933.mp3`（預設寫在 config） |
+| BGM URL | `sigmamusicart-background-music-good-vibes-468506.mp3`（預設寫在 config） |
 
 ### 時長決定方式
 各 scene 時長使用**固定常數**：
@@ -140,6 +140,7 @@ Remotion `SubtitleOverlay` 根據時間戳顯示字幕，白字外擴描邊（52
 | MAP_FRAMES | 300 | 10s（預設，可被旁白拉長） |
 | STATS_FRAMES | 210 | 7s（預設，可被旁白拉長） |
 | CTA_FRAMES | 150 | 5s（預設，可被旁白拉長） |
+| STAGING_FRAMES | 60 | 2s（staging 虛擬裝潢展示） |
 | FADE_FRAMES | 10 | 0.33s（fade 轉場） |
 
 ### 動態場景時長
@@ -373,7 +374,7 @@ Gate 2：預覽確認（LINE Push API + postback）→ 最終 MP4 → LINE
 - ✅ Dockerfile 加 `fonts-noto-color-emoji`（2026-03-28）
 - ✅ LINE 上傳照片上限 15 張 + 歡迎訊息提示建議 10 張（2026-03-28）
 - ✅ 物件資訊提示 AI 自動擷取（2026-03-28）
-- ✅ 預設 BGM 改為 vibehorn（2026-03-28）
+- ✅ 預設 BGM 改為 vibehorn（2026-03-28）→ good-vibes（2026-03-31）
 - ✅ 旁白超長時自動拉長場景 durationInFrames（2026-03-28）
 - ✅ 講稿文字 s2twp 繁體轉換（2026-03-28）
 - ✅ Clip 加速 2x / 2.5s，移除小空間分類（2026-03-30）
@@ -384,6 +385,9 @@ Gate 2：預覽確認（LINE Push API + postback）→ 最終 MP4 → LINE
 - ✅ STATS/CTA 場景隱藏字幕（2026-03-31）
 - ✅ 旁白字數上限收緊 + pipeline 端截斷防線（2026-03-31）
 - ✅ MapScene POI 標籤放大 40%（2026-03-31）
+- ✅ MapScene zoom 改為 14（2026-03-31）
+- ✅ Staging 展示時間從 3s 縮短至 2s（2026-03-31）
+- ✅ 預設 BGM 改為 good-vibes（2026-03-31）
 
 ## 待辦
 - [ ] LINE 升輕用量方案（目前 Free 200 則/月易觸發 429）

@@ -92,10 +92,10 @@ class TestCalcSceneStartFrames:
         ]
         starts = _calc_scene_start_frames(scenes, hook_image_count=3)
         # 外觀→客廳: different label, fade
-        # 客廳 has staging: +HOLD(35) +STAGING(90) -WIPE(28) -FADE(10)
+        # 客廳 has staging: +HOLD(35) +STAGING(60) -WIPE(28) -FADE(10)
         cursor_after_exterior = 90 + 105 - 10  # 185
-        cursor_after_living = 185 + 105 + 35 + 90 - 28 - 10  # 377
-        assert starts[2] == pytest.approx(377 / 30 * 1000, abs=1)
+        cursor_after_living = 185 + 105 + 35 + 60 - 28 - 10  # 347
+        assert starts[2] == pytest.approx(347 / 30 * 1000, abs=1)
 
     def test_same_space_no_fade(self):
         scenes = [

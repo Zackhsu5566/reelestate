@@ -15,7 +15,8 @@
 ### 時間配置（常數）
 ```
 CLIP_FRAMES       = 2.5s = 75 frames（每個房間，2x 速度）
-MAP_FRAMES        = 10s  = 300 frames（地圖 + POI，zoom 13，🏠 marker，可被旁白拉長）
+STAGING_FRAMES    = 2s = 60 frames（虛擬裝潢展示）
+MAP_FRAMES        = 10s  = 300 frames（地圖 + POI，zoom 14，🏠 marker，可被旁白拉長）
 STATS_FRAMES      = 7s   = 210 frames（可被旁白拉長）
 CTA_FRAMES        = 5s   = 150 frames（可被旁白拉長）
 FADE_FRAMES       = 10 frames（fade 轉場）
@@ -23,7 +24,7 @@ FADE_FRAMES       = 10 frames（fade 轉場）
 
 ### 場景結構
 ```
-HookScene (前3張staging快閃,各1s硬切) → ClipScene × N → [fade] → MapScene (地圖+POI) → [fade] → StatsScene → [fade] → CTAScene
+HookScene (前3張staging快閃,各1s硬切) → ClipScene × N (含 wipe→Staging reveal) → [fade] → MapScene (地圖+POI) → [fade] → StatsScene → [fade] → CTAScene
 ```
 
 ### 視覺風格
@@ -55,6 +56,7 @@ remotion/public/
 | `add-api-field` | 新增 orchestrator API 欄位 |
 | `deploy-update` | 部署更新到 VPS |
 | `debug-job` | 偵錯失敗的 pipeline job |
+| `re-render` | 用舊 job 重跑 render 並發 LINE |
 
 使用前讀取對應 skill 檔案：`.claude/skills/<name>/SKILL.md`
 

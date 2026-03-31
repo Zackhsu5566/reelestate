@@ -14,7 +14,7 @@ import type { VideoInput, SceneInput, StatsSceneInput } from "./types";
 
 export const FADE_FRAMES = 10;       // ~0.33s fade between scenes
 export const WIPE_FRAMES = 28;       // ~0.93s wipe to staging
-export const STAGING_FRAMES = 53;    // 1.75s
+export const STAGING_FRAMES = 60;    // 2s
 export const HOLD_FRAMES = 35;       // ~1.17s freeze before staging wipe (accounts for transition overlap)
 export const HOOK_FRAMES_PER_IMAGE = 30; // 1s per image
 const MAX_HOOK_IMAGES = 3;
