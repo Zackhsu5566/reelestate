@@ -30,8 +30,59 @@ _MAX_GROUP_CHARS = 14  # fits within 1 line at 52px font
 _MAX_GROUP_GAP_MS = 300  # force new group if gap between words exceeds this
 
 
+def _split_long_subtitle(sub: dict) -> list[dict]:
+    """Split a subtitle that exceeds _MAX_GROUP_CHARS at punctuation boundaries."""
+    text = sub["text"]
+    if len(text) <= _MAX_GROUP_CHARS:
+        return [sub]
+
+    # Split at Chinese punctuation marks
+    parts: list[str] = []
+    buf = ""
+    for ch in text:
+        buf += ch
+        if ch in "，。！？、；：":
+            parts.append(buf)
+            buf = ""
+    if buf:
+        parts.append(buf)
+
+    if len(parts) <= 1:
+        return [sub]
+
+    # Distribute time proportionally by character count
+    total_chars = len(text)
+    total_ms = sub["time_end"] - sub["time_begin"]
+    results: list[dict] = []
+    cursor = sub["time_begin"]
+
+    for part in parts:
+        part_text = part.strip()
+        if not part_text:
+            continue
+        duration = total_ms * len(part) / total_chars
+        results.append({
+            "text": part_text,
+            "time_begin": cursor,
+            "time_end": cursor + duration,
+        })
+        cursor += duration
+
+    # Merge back small fragments that are under 4 chars
+    merged: list[dict] = []
+    for r in results:
+        if merged and len(merged[-1]["text"]) + len(r["text"]) <= _MAX_GROUP_CHARS:
+            merged[-1]["text"] += r["text"]
+            merged[-1]["time_end"] = r["time_end"]
+        else:
+            merged.append(r)
+
+    return merged
+
+
 def _group_subtitles(subtitles: list[dict]) -> list[dict]:
-    """Merge consecutive word-level subtitles into short phrase groups."""
+    """Merge consecutive word-level subtitles into short phrase groups,
+    then split any groups that exceed the max display length."""
     if not subtitles:
         return []
 
@@ -68,7 +119,12 @@ def _group_subtitles(subtitles: list[dict]) -> list[dict]:
     if current:
         groups.append(current)
 
-    return groups
+    # Split any groups that still exceed max display length
+    final: list[dict] = []
+    for g in groups:
+        final.extend(_split_long_subtitle(g))
+
+    return final
 
 
 class MiniMaxService:
