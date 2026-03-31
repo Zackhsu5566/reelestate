@@ -74,10 +74,10 @@ user:{line_user_id} → {
 
 ### Kling 影片生成
 - Model: `kwaivgi/kling-v2.5-turbo-pro/image-to-video`（$0.35/5s）
-- 6 種 camera movement：Push In / Rotate / Truck Left / Truck Right / Pedestal Up / Drone Up
-- 客廳/廚房：Pull Out；其餘室內：Pan；外觀：Drone Up
+- 8 種 clip 運鏡（隨機選取）：Push In / Pull Out / Pan / Truck Left / Truck Right / Pedestal Up / Pedestal Down / Orbit
+- 外觀固定：Drone Up
 - guidance_scale: 0.8
-- 播放速率：1.25x（5s 影片在 4s 內播完）
+- 播放速率：2x（5s 影片在 2.5s 內播完）
 
 ## 語音策略
 
@@ -119,9 +119,9 @@ Remotion render（BGM 有旁白時降音至 0.05 + SubtitleOverlay 字幕）
 
 ### 字幕
 每段 section 的 MiniMax TTS 回傳 sentence-level 字幕（`time_begin` / `time_end` 毫秒），
-`assemble_audio` 依場景起始時間 offset 後合併為完整字幕陣列。
-Remotion `SubtitleOverlay` 根據時間戳顯示字幕，白字黑框描邊（52px, stroke 3px + shadow），單行置中。
-分組上限 14 字，不換行。
+超過 14 字的字幕在標點處自動拆分，`assemble_audio` 依場景起始時間 offset 後合併為完整字幕陣列。
+STATS 和 CTA 場景不顯示字幕（畫面已有文字）。
+Remotion `SubtitleOverlay` 根據時間戳顯示字幕，白字外擴描邊（52px, paintOrder stroke fill），單行置中，標點符號自動移除。
 
 ### 音訊設定
 | 項目 | 值 |
@@ -273,7 +273,7 @@ remotion/
 | 空間標籤 | 半透明毛玻璃，左下角 |
 | 虛擬裝潢 badge | 金色（#FFD700），右上角 |
 | 音訊 | TTS 旁白（1.0）+ BGM（0.05 有旁白 / 0.15 無旁白） |
-| 字幕 | sentence-level，白字黑框描邊 52px，單行置中，fade in/out，分組上限 14 字 |
+| 字幕 | sentence-level，白字外擴描邊 52px，單行置中，fade in/out，分組上限 14 字，STATS/CTA 不顯示 |
 
 ## 自動化架構
 
@@ -378,6 +378,12 @@ Gate 2：預覽確認（LINE Push API + postback）→ 最終 MP4 → LINE
 - ✅ 講稿文字 s2twp 繁體轉換（2026-03-28）
 - ✅ Clip 加速 2x / 2.5s，移除小空間分類（2026-03-30）
 - ✅ 字幕改為白字黑框描邊 52px 單行，分組上限 14 字（2026-03-30）
+- ✅ Clip 運鏡改為 8 種隨機選取，外觀固定 Drone Up（2026-03-31）
+- ✅ LINE 編輯講稿 emoji→marker 轉換修復（2026-03-31）
+- ✅ 字幕超長自動拆分 + 標點移除 + 外擴描邊（paintOrder）（2026-03-31）
+- ✅ STATS/CTA 場景隱藏字幕（2026-03-31）
+- ✅ 旁白字數上限收緊 + pipeline 端截斷防線（2026-03-31）
+- ✅ MapScene POI 標籤放大 40%（2026-03-31）
 
 ## 待辦
 - [ ] LINE 升輕用量方案（目前 Free 200 則/月易觸發 429）
