@@ -265,12 +265,14 @@ def assemble_audio(
             )
         final_audio += section_audio
 
-        for sub in section["subtitles"]:
-            final_subtitles.append({
-                "text": sub["text"],
-                "time_begin": sub["time_begin"] + target_start_ms,
-                "time_end": sub["time_end"] + target_start_ms,
-            })
+        # Skip subtitles for STATS and CTA (text already shown on screen)
+        if section["marker"] not in ("STATS", "CTA"):
+            for sub in section["subtitles"]:
+                final_subtitles.append({
+                    "text": sub["text"],
+                    "time_begin": sub["time_begin"] + target_start_ms,
+                    "time_end": sub["time_end"] + target_start_ms,
+                })
 
     buf = BytesIO()
     final_audio.export(buf, format="mp3")
