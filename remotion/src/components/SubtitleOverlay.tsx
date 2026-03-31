@@ -53,8 +53,8 @@ export const SubtitleOverlay: React.FC<Props> = ({ subtitles }) => {
           fontFamily,
           textAlign: "center",
           lineHeight: 1.4,
-          WebkitTextStroke: "3px #000",
-          textShadow: "0 3px 10px #000",
+          WebkitTextStroke: "2px #000",
+          textShadow: "0 2px 4px rgba(0,0,0,0.5)",
         }}
       >
         {active.text}
