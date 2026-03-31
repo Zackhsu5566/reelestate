@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import subprocess
 import tempfile
 import time
@@ -21,7 +22,7 @@ from orchestrator.services.agent import agent_service
 from orchestrator.services.minimax import MiniMaxService
 from orchestrator.services.r2 import r2_service
 from orchestrator.services.render import render_service
-from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, PROMPT_PULL_OUT, PROMPT_PAN
+from orchestrator.services.wavespeed import wavespeed, PROMPT_DRONE_UP, CLIP_CAMERA_PROMPTS
 from orchestrator.line.bot import line_bot
 from orchestrator.services.audio_align import split_by_markers, map_sections_to_scenes, assemble_audio, extend_scenes_for_audio, MAX_HOOK_IMAGES
 
@@ -491,11 +492,8 @@ async def step_generate(state: JobState) -> None:
         )
         has_staging = staging_prompt is not None
 
-        # 客廳/廚房用 Pull Out，其餘用 Pan
-        camera_prompt = (
-            PROMPT_PULL_OUT if space.name in ("客廳", "廚房") else PROMPT_PAN
-        )
         for idx, photo_url in enumerate(photos):
+            camera_prompt = random.choice(CLIP_CAMERA_PROMPTS)
             is_last = (idx == len(photos) - 1)
             needs_reverse = has_staging and is_last
             tasks.append(_task_kling_video(

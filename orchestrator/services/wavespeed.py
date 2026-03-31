@@ -105,6 +105,18 @@ PROMPT_STATIC = (
     "Photorealistic, 4K render quality."
 )
 
+# Clip 運鏡池（排除 Drone Up 和 Static）
+CLIP_CAMERA_PROMPTS = [
+    PROMPT_ORBIT,          # 9
+    PROMPT_PEDESTAL_DOWN,  # 7
+    PROMPT_PEDESTAL_UP,    # 6
+    PROMPT_TRUCK_RIGHT,    # 5
+    PROMPT_TRUCK_LEFT,     # 4
+    PROMPT_PAN,            # 3
+    PROMPT_PULL_OUT,       # 2
+    PROMPT_PUSH_IN,        # 1
+]
+
 
 MAX_CONCURRENT_SUBMITS = 3  # Limit parallel WaveSpeed API submits to avoid 429
 
