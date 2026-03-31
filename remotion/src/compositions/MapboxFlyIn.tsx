@@ -28,9 +28,9 @@ const DOT_ANIM_FRAMES = 8; // ~0.27s pin dot pop-in
 // Left-side label layout
 const LABEL_LEFT = 40;
 const LABEL_TOP = 280;
-const LABEL_GAP = 110;
-const LABEL_CARD_WIDTH = 260;
-const LABEL_CARD_HEIGHT = 72;
+const LABEL_GAP = 150;
+const LABEL_CARD_WIDTH = 364;
+const LABEL_CARD_HEIGHT = 100;
 
 const CATEGORY_COLORS: Record<POI["category"], string> = {
   mrt: "#00B4D8",
@@ -198,7 +198,7 @@ export const MapboxFlyIn: React.FC<Props> = ({
               background: "rgba(0,0,0,0.75)",
               backdropFilter: "blur(6px)",
               borderRadius: 12,
-              padding: "10px 16px",
+              padding: "14px 22px",
               display: "flex",
               alignItems: "center",
               gap: 12,
@@ -210,18 +210,18 @@ export const MapboxFlyIn: React.FC<Props> = ({
             {/* Color dot */}
             <div
               style={{
-                width: 14,
-                height: 14,
+                width: 20,
+                height: 20,
                 borderRadius: "50%",
                 background: color,
                 flexShrink: 0,
               }}
             />
             <div>
-              <div style={{ color: "#fff", fontSize: 22, fontWeight: 700, whiteSpace: "nowrap" }}>
+              <div style={{ color: "#fff", fontSize: 31, fontWeight: 700, whiteSpace: "nowrap" }}>
                 {poi.name}
               </div>
-              <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 16, fontWeight: 400 }}>
+              <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 22, fontWeight: 400 }}>
                 {poi.distance}
               </div>
             </div>
