@@ -1,10 +1,17 @@
-import { AbsoluteFill, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, interpolate, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { Video } from "@remotion/media";
 import { loadFont } from "@remotion/google-fonts/NotoSansTC";
 
 const { fontFamily } = loadFont("normal", {
   weights: ["700"],
 });
+
+// Speed ramp: 前段快、後段慢，總消耗 source 時長 = 原本 2x 等速
+const FAST_RATE = 2.5;
+const SLOW_RATE = 1.4;
+const ORIGINAL_RATE = 2;
+// 前段佔比：由 FAST_RATE * r + SLOW_RATE * (1-r) = ORIGINAL_RATE 解出
+const FAST_RATIO = (ORIGINAL_RATE - SLOW_RATE) / (FAST_RATE - SLOW_RATE);
 
 type Props = {
   src: string;
@@ -14,7 +21,12 @@ type Props = {
 
 export const ClipScene: React.FC<Props> = ({ src, label, isFirstInGroup = true }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, durationInFrames } = useVideoConfig();
+
+  const fastFrames = Math.round(durationInFrames * FAST_RATIO);
+  const slowFrames = durationInFrames - fastFrames;
+  // 後段影片起點 = 前段消耗的 source frames
+  const slowStartFrom = Math.round(fastFrames * FAST_RATE);
 
   const labelOpacity = isFirstInGroup
     ? interpolate(frame, [0.5 * fps, 1 * fps], [0, 1], { extrapolateRight: "clamp" })
@@ -25,13 +37,25 @@ export const ClipScene: React.FC<Props> = ({ src, label, isFirstInGroup = true }
 
   return (
     <AbsoluteFill style={{ background: "#000" }}>
-      {/* Full-screen video, muted (BGM only) */}
-      <Video
-        src={staticFile(src)}
-        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        playbackRate={2}
-        muted
-      />
+      {/* 前段快速 */}
+      <Sequence from={0} durationInFrames={fastFrames} layout="none">
+        <Video
+          src={staticFile(src)}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          playbackRate={FAST_RATE}
+          muted
+        />
+      </Sequence>
+      {/* 後段減速 */}
+      <Sequence from={fastFrames} durationInFrames={slowFrames} layout="none">
+        <Video
+          src={staticFile(src)}
+          startFrom={slowStartFrom}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          playbackRate={SLOW_RATE}
+          muted
+        />
+      </Sequence>
 
       {/* Bottom gradient overlay */}
       <AbsoluteFill
