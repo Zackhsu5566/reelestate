@@ -21,7 +21,7 @@ const MAPBOX_STYLE_ID = "beingzackhsu/cmmrh4sis008501rndfa72u92";
 export const FLY_DURATION_FRAMES = 0; // no zoom animation — start at final position
 export const POI_START_FRAME = 15; // POIs appear after brief settle (~0.5s)
 
-const POI_STAGGER = 60; // 2s between each POI
+const POI_STAGGER = 0; // all POIs appear simultaneously
 const LINE_DRAW_FRAMES = 20; // ~0.67s connector line animation
 const DOT_ANIM_FRAMES = 8; // ~0.27s pin dot pop-in
 

@@ -17,8 +17,8 @@ type Props = {
 };
 
 const ANIM_DURATION = 20; // ~0.67s
-const STAGGER_DELAY = 25; // ~0.83s between each item
-const ITEMS_START = 40;   // items start after header holds ~1.3s
+const STAGGER_DELAY = 0;  // all items appear simultaneously
+const ITEMS_START = 15;   // items start after brief header fade (~0.5s)
 
 const StatRow: React.FC<{ stat: StatItem; index: number }> = ({ stat, index }) => {
   const frame = useCurrentFrame();

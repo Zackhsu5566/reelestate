@@ -604,9 +604,9 @@ async def step_deliver(state: JobState) -> None:
 
 # ── Build RenderInput ──
 
-MAP_FRAMES = 300  # 10s — static map + POI markers (no zoom animation)
+MAP_FRAMES = 150  # 5s — static map + POI markers (all appear simultaneously)
 CLIP_FRAMES = 75  # 2.5s (video 2x speed)
-STATS_FRAMES = 210  # 7s — enough for 5 items stagger animation + hold
+STATS_FRAMES = 120  # 4s — all items appear simultaneously
 CTA_FRAMES = 150  # 5s
 
 
