@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import logging
+import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 
 from orchestrator.models import (
     CreateJobRequest,
+    DryRenderRequest,
+    DryRenderResponse,
     GateCallbackRequest,
     JobResponse,
     JobState,
@@ -18,7 +22,7 @@ from orchestrator.models import (
     SpaceInput,
 )
 from orchestrator.pipeline.gates import handle_gate_callback
-from orchestrator.pipeline.jobs import pipeline_runner
+from orchestrator.pipeline.jobs import pipeline_runner, _build_render_input
 from orchestrator.pipeline.state import store
 from orchestrator.services.r2 import r2_service
 from orchestrator.services.render import render_service
@@ -180,3 +184,51 @@ async def gate_callback(job_id: str, req: GateCallbackRequest):
     if not result.get("ok"):
         raise HTTPException(status_code=400, detail=result.get("error"))
     return result
+
+
+_READY_STATUSES = {JobStatus.rendering, JobStatus.gate_preview, JobStatus.delivering, JobStatus.done}
+
+
+@app.post("/jobs/{job_id}/dry-render")
+async def dry_render(job_id: str, req: DryRenderRequest = Body(default=None)):
+    # 1. Load state
+    state = await store.get(job_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # 2. Validate readiness
+    if state.status not in _READY_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job not ready (status={state.status.value}). Needs to be at least 'rendering'.",
+        )
+
+    # 3. Build render input from a deep copy (avoid side effects on original state)
+    state_copy = JobState(**copy.deepcopy(state.model_dump()))
+    render_input = await _build_render_input(state_copy)
+
+    # 4. Apply overrides
+    overrides = req.overrides.model_dump(exclude_none=True) if req and req.overrides else None
+    try:
+        render_input = apply_overrides(render_input, overrides)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # 5. Submit with dry- prefix, use returned ID for polling
+    dry_job_id = f"dry-{job_id}-{int(time.time())}"
+    rid = await render_service.submit(dry_job_id, render_input)
+
+    # 6. Poll with 20 min timeout (catch both TimeoutError and asyncio.TimeoutError)
+    try:
+        result = await asyncio.wait_for(
+            render_service.poll(rid),
+            timeout=1200,
+        )
+    except (TimeoutError, asyncio.TimeoutError):
+        raise HTTPException(status_code=504, detail="Render timed out (20 min)")
+
+    # 7. Return result
+    return DryRenderResponse(
+        render_job_id=rid,
+        output_url=result["outputUrl"],
+    )

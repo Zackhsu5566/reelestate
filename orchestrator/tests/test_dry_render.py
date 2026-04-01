@@ -3,6 +3,7 @@ import sys
 from types import ModuleType
 from unittest.mock import MagicMock
 
+import httpx  # noqa: E402 — import before stubs to keep real httpx
 import pytest
 
 # Stub config before importing
@@ -109,3 +110,141 @@ class TestApplyOverrides:
         original_override = copy.deepcopy(override_scenes)
         apply_overrides(ri, {"scenes": override_scenes})
         assert override_scenes == original_override  # not mutated
+
+
+# ── Endpoint tests ──
+
+from unittest.mock import AsyncMock, patch
+
+from orchestrator.models import JobState, JobStatus, AssetTask, AgentResult, PropertyInfo, SpaceInfo
+
+
+def _make_state(**overrides) -> JobState:
+    defaults = dict(
+        job_id="test-job-123",
+        status=JobStatus.rendering,
+        raw_text="test property",
+        line_user_id="U123",
+        agent_result=AgentResult(
+            property=PropertyInfo(address="台北市信義區"),
+            title="測試物件",
+            narration="test narration",
+            spaces=[SpaceInfo(name="客廳", photo_count=1, photos=["https://example.com/photo.jpg"])],
+        ),
+        asset_tasks={"clip:客廳:0": AssetTask(status="completed", output_url="https://example.com/clip.mp4")},
+    )
+    defaults.update(overrides)
+    return JobState(**defaults)
+
+
+class TestDryRenderEndpoint:
+    @pytest.mark.asyncio
+    async def test_job_not_found(self):
+        from orchestrator.main import app
+        from httpx import AsyncClient, ASGITransport
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            with patch("orchestrator.main.store") as mock_store:
+                mock_store.get = AsyncMock(return_value=None)
+                resp = await client.post("/jobs/nonexistent/dry-render")
+                assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_job_not_ready(self):
+        from orchestrator.main import app
+        from httpx import AsyncClient, ASGITransport
+
+        state = _make_state(status=JobStatus.analyzing)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            with patch("orchestrator.main.store") as mock_store:
+                mock_store.get = AsyncMock(return_value=state)
+                resp = await client.post("/jobs/test-job-123/dry-render")
+                assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_successful_dry_render(self):
+        from orchestrator.main import app
+        from httpx import AsyncClient, ASGITransport
+
+        state = _make_state()
+        mock_render_input = {"title": "Test", "scenes": []}
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            with (
+                patch("orchestrator.main.store") as mock_store,
+                patch("orchestrator.main._build_render_input", new_callable=AsyncMock) as mock_build,
+                patch("orchestrator.main.render_service") as mock_render,
+            ):
+                mock_store.get = AsyncMock(return_value=state)
+                mock_build.return_value = mock_render_input
+                mock_render.submit = AsyncMock(return_value="render-server-job-id")
+                mock_render.poll = AsyncMock(return_value={"outputUrl": "https://example.com/output.mp4"})
+
+                resp = await client.post("/jobs/test-job-123/dry-render")
+                assert resp.status_code == 200
+                data = resp.json()
+                assert data["render_job_id"] == "render-server-job-id"
+                assert data["output_url"] == "https://example.com/output.mp4"
+
+                # Verify poll was called with the ID returned by submit (not locally generated)
+                mock_render.poll.assert_called_once_with("render-server-job-id")
+
+    @pytest.mark.asyncio
+    async def test_dry_render_with_overrides(self):
+        from orchestrator.main import app
+        from httpx import AsyncClient, ASGITransport
+
+        state = _make_state()
+        mock_render_input = {
+            "title": "Original",
+            "bgm": "old.mp3",
+            "scenes": [{"type": "clip", "durationInFrames": 75}],
+        }
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            with (
+                patch("orchestrator.main.store") as mock_store,
+                patch("orchestrator.main._build_render_input", new_callable=AsyncMock) as mock_build,
+                patch("orchestrator.main.render_service") as mock_render,
+            ):
+                mock_store.get = AsyncMock(return_value=state)
+                mock_build.return_value = mock_render_input
+                mock_render.submit = AsyncMock(return_value="dry-123")
+                mock_render.poll = AsyncMock(return_value={"outputUrl": "https://example.com/out.mp4"})
+
+                resp = await client.post(
+                    "/jobs/test-job-123/dry-render",
+                    json={"overrides": {"title": "New Title"}},
+                )
+                assert resp.status_code == 200
+
+                # Verify submit received overridden input
+                submit_input = mock_render.submit.call_args[0][1]
+                assert submit_input["title"] == "New Title"
+                assert submit_input["bgm"] == "old.mp3"  # untouched
+
+    @pytest.mark.asyncio
+    async def test_render_timeout(self):
+        from orchestrator.main import app
+        from httpx import AsyncClient, ASGITransport
+
+        state = _make_state()
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            with (
+                patch("orchestrator.main.store") as mock_store,
+                patch("orchestrator.main._build_render_input", new_callable=AsyncMock) as mock_build,
+                patch("orchestrator.main.render_service") as mock_render,
+            ):
+                mock_store.get = AsyncMock(return_value=state)
+                mock_build.return_value = {"title": "Test", "scenes": []}
+                mock_render.submit = AsyncMock(return_value="dry-timeout")
+                mock_render.poll = AsyncMock(side_effect=TimeoutError("timed out"))
+
+                resp = await client.post("/jobs/test-job-123/dry-render")
+                assert resp.status_code == 504
