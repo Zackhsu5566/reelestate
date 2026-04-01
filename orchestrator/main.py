@@ -86,6 +86,26 @@ def _preprocess_spaces(spaces: list[SpaceInput]) -> list[SpaceInput]:
     return processed
 
 
+# ── Helpers ──
+
+
+def apply_overrides(render_input: dict, overrides: dict | None) -> dict:
+    """Shallow-merge overrides into render_input. Scenes are patched by index."""
+    if not overrides:
+        return render_input
+    for key, value in overrides.items():
+        if key == "scenes" and isinstance(value, list):
+            for patch in value:
+                idx = patch["index"]
+                if idx < 0 or idx >= len(render_input["scenes"]):
+                    raise ValueError(f"Scene index {idx} out of range")
+                fields = {k: v for k, v in patch.items() if k != "index"}
+                render_input["scenes"][idx].update(fields)
+        else:
+            render_input[key] = value
+    return render_input
+
+
 # ── Routes ──
 
 
