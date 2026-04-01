@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 # ── Job Status ──
@@ -181,3 +181,33 @@ class JobResponse(BaseModel):
     preview_url: str | None = None
     final_url: str | None = None
     errors: list[str] = []
+
+
+# ── Dry Render ──
+
+
+class SceneOverride(BaseModel):
+    index: int
+    durationInFrames: int | None = None
+    src: str | None = None
+    stagingImage: str | None = None
+    label: str | None = None
+
+
+class DryRenderOverrides(BaseModel):
+    bgm: str | None = None
+    narration: str | None = None
+    title: str | None = None
+    price: str | None = None
+    agentName: str | None = None
+    scenes: list[SceneOverride] | None = None
+    model_config = ConfigDict(extra="allow")
+
+
+class DryRenderRequest(BaseModel):
+    overrides: DryRenderOverrides | None = None
+
+
+class DryRenderResponse(BaseModel):
+    render_job_id: str
+    output_url: str
