@@ -13,7 +13,7 @@ from orchestrator.config import settings
 MODEL_KLING = "kwaivgi/kling-v2.5-turbo-pro/image-to-video"
 MODEL_STAGING = "google/nano-banana-2/edit"
 
-# Negative prompt（shared across all Kling submissions）
+# Negative prompt（shared across all Kling submissions）— v4
 NEGATIVE_PROMPT = (
     "human, person, people, hand, finger, shadow of person, "
     "reflection of person, handheld, walking, footsteps, "
@@ -24,25 +24,15 @@ NEGATIVE_PROMPT = (
     "new objects appearing, objects disappearing, "
     "changing reflections, mirror artifacts, flickering lights, "
     "texture swimming, surface shimmer, wall bending, "
-    "blurry, low quality, unstable frame, interlacing"
+    "blurry, low quality, unstable frame, interlacing, "
+    "ken burns, 2D zoom, 2D scale, flat zoom"
 )
 
-# Camera movement prompts — v3 (scene-agnostic)
+# Camera movement prompts — v4 (scene-agnostic)
 PROMPT_PUSH_IN = (
-    "Cinematic architectural visualization. "
-    "Camera: slow motorized dolly forward on a straight rail "
-    "toward the center of the scene. Constant speed, perfectly "
-    "linear motion. Shot on 24mm lens, f/8, deep focus. "
-    "Every element in the scene remains completely still. "
-    "Photorealistic, 4K render quality."
-)
-PROMPT_PULL_OUT = (
-    "Cinematic architectural visualization. "
-    "Camera: slow motorized dolly backward on a straight rail, "
-    "gradually revealing the full scene. Constant speed, perfectly "
-    "linear motion. Shot on 24mm lens, f/8, deep focus. "
-    "Every element in the scene remains completely still. "
-    "Photorealistic, 4K render quality."
+    "Aerial drone shot moving forward, low altitude, "
+    "smooth cinematic motion, static scene, no morphing, "
+    "no scene change. Photorealistic, 4K."
 )
 PROMPT_PAN = (
     "Cinematic architectural visualization. "
@@ -85,8 +75,12 @@ PROMPT_PEDESTAL_DOWN = (
     "Photorealistic, 4K render quality."
 )
 PROMPT_DRONE_UP = (
-    "Aerial view rising slowly upward, revealing the surroundings. "
-    "Perfectly stable. No people."
+    "Cinematic architectural visualization. "
+    "Camera: slow vertical ascent from a stabilized drone gimbal, "
+    "gradually revealing the surroundings. Constant speed, "
+    "perfectly smooth rise. Shot on 24mm lens, f/5.6, deep focus. "
+    "Every element in the scene remains completely still. "
+    "Photorealistic, 4K render quality."
 )
 PROMPT_ORBIT = (
     "Cinematic architectural visualization. "
@@ -107,13 +101,12 @@ PROMPT_STATIC = (
 
 # Clip 運鏡池（排除 Drone Up 和 Static）
 CLIP_CAMERA_PROMPTS = [
-    PROMPT_ORBIT,          # 9
+    PROMPT_ORBIT,          # 8
     PROMPT_PEDESTAL_DOWN,  # 7
     PROMPT_PEDESTAL_UP,    # 6
     PROMPT_TRUCK_RIGHT,    # 5
     PROMPT_TRUCK_LEFT,     # 4
     PROMPT_PAN,            # 3
-    PROMPT_PULL_OUT,       # 2
     PROMPT_PUSH_IN,        # 1
 ]
 
